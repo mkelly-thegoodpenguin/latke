@@ -19,4 +19,21 @@
 
 #pragma once
 
-#include "latke.h"
+#include "IArch.h"
+
+namespace ltk {
+
+const cl_uint vendorIdNVD = 0x10DE;
+
+class ArchNVD: public IArch {
+
+public:
+	size_t getWaveFrontSize() {
+		return 32;
+	}
+	virtual cl_uint getVendorId(){
+		return vendorIdNVD;
+	}
+};
+
+}

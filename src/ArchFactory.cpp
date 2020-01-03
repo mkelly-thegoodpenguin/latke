@@ -17,18 +17,19 @@
  * Boston, MA 02110-1301, USA.
  */
 
-#include "platform.cl"
+#include "ArchFactory.h"
 
-CONSTANT sampler_t sampler = CLK_NORMALIZED_COORDS_FALSE  | CLK_FILTER_NEAREST;
+namespace ltk {
 
-
-void KERNEL REQUIRED_WORK_GROUP_SIZE(KERNEL_DIM_X,KERNEL_DIM_Y) 
-									process(READ_ONLY_IMAGE2D  src,
-													WRITE_ONLY_IMAGE2D dest) {
-	const int2 dimSrc = get_image_dim(src);
-	const int2 dimDest = get_image_dim(dest);
-
-	int2 posSrc = {getGlobalIdX(), getGlobalIdY()};
-	int2 posDest = {getGlobalIdX(), getGlobalIdY()};
+IArch* ArchFactory::getArchitecture(cl_uint vendorId){
+	switch (vendorId){
+	case vendorIdAMD:
+		return new ArchAMD();
+	case vendorIdNVD:
+		return new ArchNVD();
+	default:
+		return nullptr;
+	}
+}
 
 }

@@ -19,14 +19,7 @@
 
 #include "latke_config.h"
 #ifdef OPENCL_FOUND
-#include "DeviceOCL.h"
-#include "DeviceManagerOCL.h"
-#include "DualBufferOCL.h"
-#include "DualImageOCL.h"
 #include "platform.h"
-#include "QueueOCL.h"
-#include "UtilOCL.h"
-#include "KernelOCL.h"
 #include "RunInfoOCL.h"
 
 
@@ -36,10 +29,7 @@ RunInfoOCL::RunInfoOCL(	QueueOCL* myQueue) :
     queue(myQueue),
     numWaitEvents(0),
 	needsCompletionEvent(false),
-	completionEvent(0),
-	tileId(0),
-	channel(0),
-	numChannels(0)
+	completionEvent(0)
 {}
 
 // push a wait event into the wait events array

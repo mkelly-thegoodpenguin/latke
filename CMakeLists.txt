@@ -1,10 +1,15 @@
 cmake_minimum_required (VERSION 3.7)
 project (latke)
 
+set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+find_package(Threads REQUIRED)
+
 set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
 
 find_package(OpenCL REQUIRED)
-include_directories(${OPENCL_INCLUDE_DIR} src)
+include_directories(${OPENCL_INCLUDE_DIRS} src)
 
 # Install directories
 include(GNUInstallDirs)
@@ -17,6 +22,7 @@ add_library(latke STATIC
     ${CMAKE_CURRENT_SOURCE_DIR}/src/platform.h
     ${CMAKE_CURRENT_SOURCE_DIR}/src/IArch.h
 	${CMAKE_CURRENT_SOURCE_DIR}/src/ArchAMD.h
+	${CMAKE_CURRENT_SOURCE_DIR}/src/ArchFactory.h
     ${CMAKE_CURRENT_SOURCE_DIR}/src/latke.h
 	${CMAKE_CURRENT_SOURCE_DIR}/src/DeviceManagerOCL.h
     ${CMAKE_CURRENT_SOURCE_DIR}/src/DualBufferOCL.h
@@ -34,6 +40,7 @@ add_library(latke STATIC
     ${CMAKE_CURRENT_SOURCE_DIR}/src/KernelOCL.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/UtilOCL.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/RunInfoOCL.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/ArchFactory.cpp
     
     ${CMAKE_CURRENT_SOURCE_DIR}/src/platform.cl
 )
@@ -45,7 +52,7 @@ add_library(latke STATIC
  )
 
 # Gather list of all cl files
-file(GLOB CLFiles ${CMAKE_CURRENT_SOURCE_DIR}/*.cl 
+file(GLOB CLFiles ${CMAKE_CURRENT_SOURCE_DIR}/tests/*.cl 
                   ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cl 
                   ${CMAKE_CURRENT_SOURCE_DIR}/src/latke_config.h )
 
@@ -55,6 +62,11 @@ foreach(CLFile ${CLFiles})
                          copy_if_different  ${CLFile}  $<TARGET_FILE_DIR:latke> )
 endforeach()
 
-add_executable(latke_test latke_test.cpp)
-target_link_libraries(latke_test latke ${OPENCL_LIBRARY})
+# tests
+
+add_executable(simple tests/simple.cpp)
+target_link_libraries(simple latke ${OPENCL_LIBRARIES} Threads::Threads)
+
+add_executable(debayer tests/debayer.cpp)
+target_link_libraries(debayer latke ${OPENCL_LIBRARIES} Threads::Threads)
 

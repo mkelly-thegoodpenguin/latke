@@ -18,6 +18,7 @@
  */
 
 #pragma once
+#include <memory>
 #include "latke_config.h"
 #ifdef OPENCL_FOUND
 #include "platform.h"
@@ -45,5 +46,23 @@ public:
 	virtual QueueOCL* getQueue() const=0;
 
 };
+
+template<typename M> struct MemInfo {
+	MemInfo(DeviceOCL *dev, std::unique_ptr<M> *image) :
+			mem(image), triggerMemUnmap(Util::CreateUserEvent(dev->context)), memUnmapped(
+					0) {
+	}
+	~MemInfo() {
+		Util::ReleaseEvent(triggerMemUnmap);
+		Util::ReleaseEvent(memUnmapped);
+	}
+
+	std::unique_ptr<M> *mem;
+	cl_event triggerMemUnmap;
+	cl_event memUnmapped;
+};
+
+
+
 }
 #endif

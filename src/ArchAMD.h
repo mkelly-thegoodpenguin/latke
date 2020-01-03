@@ -23,11 +23,16 @@
 
 namespace ltk {
 
+const cl_uint vendorIdAMD = 0x1002;
+
 class ArchAMD: public IArch {
 
 public:
 	size_t getWaveFrontSize() {
 		return 64;
+	}
+	virtual cl_uint getVendorId(){
+		return vendorIdAMD;
 	}
 };
 

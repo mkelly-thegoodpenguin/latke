@@ -19,6 +19,8 @@
 
 #pragma once
 
+#include <cstddef>
+
 namespace ltk {
 
 class IArch {
@@ -27,6 +29,7 @@ public:
 	virtual ~IArch() {
 	}
 	virtual size_t getWaveFrontSize()=0;
+	virtual cl_uint getVendorId() = 0;
 };
 
 }

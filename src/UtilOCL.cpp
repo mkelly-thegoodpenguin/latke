@@ -29,9 +29,6 @@
  OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
  NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  ********************************************************************/
-//
-// Copyright (c) 2008 Advanced Micro Devices, Inc. All rights reserved.
-//
 
 #include "latke_config.h"
 #ifdef OPENCL_FOUND
@@ -369,7 +366,7 @@ int displayDevices(cl_platform_id platform, cl_device_type deviceType) {
 	CHECK_ALLOCATION(deviceIds, "Failed to allocate memory(deviceIds)");
 	// Get device ids
 	status = clGetDeviceIDs(platform, deviceType, deviceCount, deviceIds.get(),
-			NULL);
+	NULL);
 	CHECK_OPENCL_ERROR(status, "clGetDeviceIDs failed");
 	// Print device index and device names
 	for (cl_uint i = 0; i < deviceCount; ++i) {
@@ -459,7 +456,7 @@ int buildOpenCLProgram(cl_program &program, const cl_context &context,
 		std::cout << "Build Options are : " << flagsStr.c_str() << std::endl;
 	/* create a cl program executable for specified device*/
 	status = clBuildProgram(program, 1, &buildData.device, flagsStr.c_str(),
-			NULL, NULL);
+	NULL, NULL);
 	if (status != CL_SUCCESS) {
 		if (status == CL_BUILD_PROGRAM_FAILURE) {
 			cl_int logStatus;
@@ -1515,7 +1512,7 @@ cl_context Util::CreateCPUContext(cl_platform_id platformId) {
 	// Create context with all the CPU devices in the platforms.
 	// The creation is synchronized (pfn_notify is NULL) and NULL user_data
 	cl_context context = clCreateContextFromType(contextProperties,
-			CL_DEVICE_TYPE_CPU, NULL, NULL, &errorCode);
+	CL_DEVICE_TYPE_CPU, NULL, NULL, &errorCode);
 	if ((errorCode != CL_SUCCESS) || (context == NULL)) {
 		Util::LogError(
 				"Couldn't create a CPU context, clCreateContextFromType() returned '%s'.\n",
@@ -1535,7 +1532,7 @@ cl_context Util::CreateGPUContext(cl_platform_id platformId) {
 	// Create context with all the GPU devices in the platforms.
 	// The creation is synchronized (pfn_notify is NULL) and NULL user_data
 	cl_context context = clCreateContextFromType(contextProperties,
-			CL_DEVICE_TYPE_GPU, NULL, NULL, &errorCode);
+	CL_DEVICE_TYPE_GPU, NULL, NULL, &errorCode);
 	if ((errorCode != CL_SUCCESS) || (context == NULL)) {
 		Util::LogError(
 				"Couldn't create a GPU context, clCreateContextFromType() returned '%s'.\n",
@@ -1555,7 +1552,7 @@ cl_context Util::CreateSharedContext(cl_platform_id platformId) {
 	// Create context with all the devices in the platforms.
 	// The creation is synchronized (pfn_notify is NULL) and NULL user_data
 	cl_context context = clCreateContextFromType(contextProperties,
-			CL_DEVICE_TYPE_ALL, NULL, NULL, &errorCode);
+	CL_DEVICE_TYPE_ALL, NULL, NULL, &errorCode);
 	if ((errorCode != CL_SUCCESS) || (context == NULL)) {
 		Util::LogError(
 				"Couldn't create a shared context, clCreateContextFromType() returned '%s'.\n",

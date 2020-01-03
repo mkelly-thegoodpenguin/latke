@@ -18,33 +18,17 @@
  */
 
 #pragma once
-#include "latke_config.h"
-#ifdef OPENCL_FOUND
-#include "QueueOCL.h"
-#include "KernelOCL.h"
+
+#include "CL/cl.h"
+#include "IArch.h"
+#include "ArchAMD.h"
+#include "ArchNVD.h"
 
 namespace ltk {
 
-const size_t MAX_EVENTS = 20;
-
-struct RunInfoOCL {
-
-	RunInfoOCL(QueueOCL* myQueue);
-
-    // push a wait event into the wait events array
-	bool pushWaitEvent(cl_event evt);
-
-    // replace an existing wait event in the wait event array
-    // Note: index must be less than numWaitEvents
-	bool setWaitEvent(cl_event evt, size_t index);
-	void copyInto(EnqueueInfo* info);
-
-    QueueOCL* queue;
-    cl_uint numWaitEvents;
-    cl_event waitEvents[MAX_EVENTS];
-	bool needsCompletionEvent;
-    cl_event completionEvent;
+class ArchFactory {
+public:
+	static IArch* getArchitecture(cl_uint vendorId);
 };
 
 }
-#endif

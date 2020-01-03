@@ -17,34 +17,26 @@
  * Boston, MA 02110-1301, USA.
  */
 
-#pragma once
-#include "latke_config.h"
-#ifdef OPENCL_FOUND
-#include "QueueOCL.h"
-#include "KernelOCL.h"
+#include "platform.cl"
 
-namespace ltk {
+CONSTANT sampler_t sampler = CLK_NORMALIZED_COORDS_FALSE  | CLK_FILTER_NEAREST;
 
-const size_t MAX_EVENTS = 20;
 
-struct RunInfoOCL {
+void KERNEL REQUIRED_WORK_GROUP_SIZE(KERNEL_DIM_X,KERNEL_DIM_Y) 
+									process(READ_ONLY_IMAGE2D  src,
+													WRITE_ONLY_IMAGE2D dest) {
+	const int2 dimSrc = get_image_dim(src);
+	const int2 dimDest = get_image_dim(dest);
 
-	RunInfoOCL(QueueOCL* myQueue);
+	int2 posSrc = {getGlobalIdX(), getGlobalIdY()};
+	int2 posDest = {getGlobalIdX(), getGlobalIdY()};
 
-    // push a wait event into the wait events array
-	bool pushWaitEvent(cl_event evt);
-
-    // replace an existing wait event in the wait event array
-    // Note: index must be less than numWaitEvents
-	bool setWaitEvent(cl_event evt, size_t index);
-	void copyInto(EnqueueInfo* info);
-
-    QueueOCL* queue;
-    cl_uint numWaitEvents;
-    cl_event waitEvents[MAX_EVENTS];
-	bool needsCompletionEvent;
-    cl_event completionEvent;
-};
+	const ushort widthDest = dimDest.s0;
+	if ((posDest.s1 >= dimDest.s1) | (posDest.s0 >= dimDest.s0))
+		return;
+	
+	uint4 inputVal =  read_imageui(src, sampler, posSrc);
+	write_imageui(dest, posDest, inputVal); 
+	
 
 }
-#endif
