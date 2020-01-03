@@ -1,0 +1,1 @@
+#define OPENCL_FOUND
