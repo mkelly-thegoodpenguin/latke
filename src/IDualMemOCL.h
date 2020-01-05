@@ -47,12 +47,12 @@ public:
 
 };
 
-template<typename M> struct MemInfo {
-	MemInfo(DeviceOCL *dev, std::unique_ptr<M> *image) :
+template<typename M> struct MemMapEvents {
+	MemMapEvents(DeviceOCL *dev, std::unique_ptr<M> *image) :
 			mem(image), triggerMemUnmap(Util::CreateUserEvent(dev->context)), memUnmapped(
 					0) {
 	}
-	~MemInfo() {
+	~MemMapEvents() {
 		Util::ReleaseEvent(triggerMemUnmap);
 		Util::ReleaseEvent(memUnmapped);
 	}

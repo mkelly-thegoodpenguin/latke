@@ -32,8 +32,8 @@ using namespace ltk;
 template<typename M> struct JobInfo {
 	JobInfo(DeviceOCL *dev, std::unique_ptr<M> *hostToDev,
 			std::unique_ptr<M> *devToHost, JobInfo *previous) :
-			hostToDevice(new MemInfo<M>(dev, hostToDev)), kernelCompleted(
-					0), deviceToHost(new MemInfo<M>(dev, devToHost)), prev(
+			hostToDevice(new MemMapEvents<M>(dev, hostToDev)), kernelCompleted(
+					0), deviceToHost(new MemMapEvents<M>(dev, devToHost)), prev(
 					previous) {
 	}
 	~JobInfo() {
@@ -42,9 +42,9 @@ template<typename M> struct JobInfo {
 		delete deviceToHost;
 	}
 
-	MemInfo<M> *hostToDevice;
+	MemMapEvents<M> *hostToDevice;
 	cl_event kernelCompleted;
-	MemInfo<M> *deviceToHost;
+	MemMapEvents<M> *deviceToHost;
 
 	JobInfo *prev;
 };
