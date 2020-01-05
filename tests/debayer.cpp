@@ -83,12 +83,11 @@ void CL_CALLBACK DeviceToHostMappedCallback(cl_event event,
 }
 
 int main() {
-
 	const uint32_t numBuffers =64;
 	uint32_t bps_out = 3;
-	uint32_t bufferWidth = 2048;
+	uint32_t bufferWidth = 3840;
 	uint32_t bufferPitch = bufferWidth;
-	uint32_t bufferHeight = 1920;
+	uint32_t bufferHeight = 2160;
 	uint32_t frameSize = bufferPitch * bufferHeight;
 	uint32_t bufferPitchOut = bufferWidth * bps_out;
 
