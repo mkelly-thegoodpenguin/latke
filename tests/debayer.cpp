@@ -27,6 +27,10 @@
 #include <cassert>
 #include <thread>
 #include "ArchFactory.h"
+#define STB_IMAGE_IMPLEMENTATION
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+#include "stb_image.h"
+#include "stb_image_write.h"
 
 using namespace ltk;
 
@@ -82,15 +86,27 @@ void CL_CALLBACK DeviceToHostMappedCallback(cl_event event,
 	mappedDeviceToHostQueue.push(info);
 }
 
-int main() {
+int main(int argc, char *argv[]) {
+	if (argc != 2)
+		exit(-1);
+
+	int width=0, height=0, channels=0;
+	unsigned char *image = stbi_load(argv[1],
+	                                 &width,
+	                                 &height,
+	                                 &channels,
+	                                 STBI_grey);
+
+	uint32_t bufferWidth = width;
+	uint32_t bufferHeight = height;
+
 	const uint32_t numBuffers =64;
 	uint32_t bps_out = 4;
-	uint32_t bufferWidth = 3840;
 	uint32_t bufferPitch = bufferWidth;
-	uint32_t bufferHeight = 2160;
 	uint32_t frameSize = bufferPitch * bufferHeight;
 	uint32_t bufferPitchOut = bufferWidth * bps_out;
 	uint32_t frameSizeOut = bufferPitchOut * bufferHeight;
+
 
 	// 1. create device manager
 	auto deviceManager = std::make_unique<DeviceManagerOCL>(true);
@@ -241,13 +257,14 @@ int main() {
 	auto start = std::chrono::high_resolution_clock::now();
 
 	// wait for images from queue, fill them, and trigger unmap event
-	std::thread pushImages([]() {
+	std::thread pushImages([frameSize,image]() {
 		JobInfo<DualBufferOCL> *info = nullptr;
 		int count = 0;
 		while (mappedHostToDeviceQueue.waitAndPop(info)) {
 			/*
 			 * fill unprocessed image memory
 			 */
+			memcpy((*info->hostToDevice->mem)->getHostBuffer(), image, frameSize);
 			// trigger unmap, allowing current kernel to proceed
 			Util::SetEventComplete(info->hostToDevice->triggerMemUnmap);
 			count++;
