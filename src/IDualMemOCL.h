@@ -48,7 +48,7 @@ public:
 };
 
 template<typename M> struct MemMapEvents {
-	MemMapEvents(DeviceOCL *dev, std::unique_ptr<M> *image) :
+	MemMapEvents(DeviceOCL *dev, std::shared_ptr<M> image) :
 			mem(image), triggerMemUnmap(Util::CreateUserEvent(dev->context)), memUnmapped(
 					0) {
 	}
@@ -57,7 +57,7 @@ template<typename M> struct MemMapEvents {
 		Util::ReleaseEvent(memUnmapped);
 	}
 
-	std::unique_ptr<M> *mem;
+	std::shared_ptr<M> mem;
 	cl_event triggerMemUnmap;
 	cl_event memUnmapped;
 };

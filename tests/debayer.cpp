@@ -35,8 +35,8 @@
 using namespace ltk;
 
 template<typename M> struct JobInfo {
-	JobInfo(DeviceOCL *dev, std::unique_ptr<M> *hostToDev,
-			std::unique_ptr<M> *devToHost, JobInfo *previous) :
+	JobInfo(DeviceOCL *dev, std::shared_ptr<M> hostToDev,
+			std::shared_ptr<M> devToHost, JobInfo *previous) :
 			hostToDevice(new MemMapEvents<M>(dev, hostToDev)), kernelCompleted(
 					0), deviceToHost(new MemMapEvents<M>(dev, devToHost)), prev(
 					previous) {
@@ -109,7 +109,7 @@ int main(int argc, char *argv[]) {
 
 
 	// 1. create device manager
-	auto deviceManager = std::make_unique<DeviceManagerOCL>(true);
+	auto deviceManager = std::make_shared<DeviceManagerOCL>(true);
 	auto rc = deviceManager->init(0, true);
 	if (rc != DeviceSuccess) {
 		std::cout << "Failed to initialize OpenCL device";
@@ -123,9 +123,9 @@ int main(int argc, char *argv[]) {
 	const int numImages = 4;
 	const int numBatches = numBuffers / numImages;
 
-	std::unique_ptr<DualBufferOCL> hostToDevice[numImages];
-	std::unique_ptr<DualBufferOCL> deviceToHost[numImages];
-	std::unique_ptr<QueueOCL> kernelQueue[numImages];
+	std::shared_ptr<DualBufferOCL> hostToDevice[numImages];
+	std::shared_ptr<DualBufferOCL> deviceToHost[numImages];
+	std::shared_ptr<QueueOCL> kernelQueue[numImages];
 	JobInfo<DualBufferOCL> *currentJobInfo[numImages];
 	JobInfo<DualBufferOCL> *prevJobInfo[numImages];
 
@@ -150,7 +150,7 @@ int main(int argc, char *argv[]) {
 	BUILD_BINARY_IN_MEMORY);
 	KernelInitInfo initInfo(initInfoBase, "debayer.cl", "debayer",
 			"malvar_he_cutler_demosaic");
-	std::unique_ptr<KernelOCL> kernel = std::make_unique<KernelOCL>(initInfo);
+	std::shared_ptr<KernelOCL> kernel = std::make_unique<KernelOCL>(initInfo);
 
 	for (int i = 0; i < numImages; ++i) {
 		hostToDevice[i] = std::make_unique<DualBufferOCL>(dev, frameSize,true);
@@ -165,8 +165,8 @@ int main(int argc, char *argv[]) {
 		for (int i = 0; i < numImages; ++i) {
 			bool lastBatch = j == numBatches - 1;
 			auto prev = currentJobInfo[i];
-			currentJobInfo[i] = new JobInfo<DualBufferOCL>(dev, &hostToDevice[i],
-					&deviceToHost[i], prevJobInfo[i]);
+			currentJobInfo[i] = new JobInfo<DualBufferOCL>(dev, hostToDevice[i],
+					deviceToHost[i], prevJobInfo[i]);
 			prevJobInfo[i] = prev;
 
 			// map
@@ -264,7 +264,7 @@ int main(int argc, char *argv[]) {
 			/*
 			 * fill unprocessed image memory
 			 */
-			memcpy((*info->hostToDevice->mem)->getHostBuffer(), image, frameSize);
+			memcpy(info->hostToDevice->mem->getHostBuffer(), image, frameSize);
 			// trigger unmap, allowing current kernel to proceed
 			Util::SetEventComplete(info->hostToDevice->triggerMemUnmap);
 			count++;

@@ -30,8 +30,8 @@
 using namespace ltk;
 
 template<typename M> struct JobInfo {
-	JobInfo(DeviceOCL *dev, std::unique_ptr<M> *hostToDev,
-			std::unique_ptr<M> *devToHost, JobInfo *previous) :
+	JobInfo(DeviceOCL *dev, std::shared_ptr<M> hostToDev,
+			std::shared_ptr<M> devToHost, JobInfo *previous) :
 			hostToDevice(new MemMapEvents<M>(dev, hostToDev)), kernelCompleted(
 					0), deviceToHost(new MemMapEvents<M>(dev, devToHost)), prev(
 					previous) {
@@ -80,7 +80,7 @@ void CL_CALLBACK DeviceToHostMappedCallback(cl_event event,
 
 int main() {
 	// 1. create device manager
-	auto deviceManager = std::make_unique<DeviceManagerOCL>(true);
+	auto deviceManager = std::make_shared<DeviceManagerOCL>(true);
 	auto rc = deviceManager->init(0, true);
 	if (rc != DeviceSuccess) {
 		std::cout << "Failed to initialize OpenCL device";
@@ -92,9 +92,9 @@ int main() {
 	const int numImages = 4;
 	const int numBatches = numBuffers / numImages;
 
-	std::unique_ptr<DualImageOCL> hostToDevice[numImages];
-	std::unique_ptr<DualImageOCL> deviceToHost[numImages];
-	std::unique_ptr<QueueOCL> kernelQueue[numImages];
+	std::shared_ptr<DualImageOCL> hostToDevice[numImages];
+	std::shared_ptr<DualImageOCL> deviceToHost[numImages];
+	std::shared_ptr<QueueOCL> kernelQueue[numImages];
 	JobInfo<DualImageOCL> *currentJobInfo[numImages];
 	JobInfo<DualImageOCL> *prevJobInfo[numImages];
 
@@ -108,7 +108,7 @@ int main() {
 	BUILD_BINARY_IN_MEMORY);
 	KernelInitInfo initInfo(initInfoBase, "simple.cl", "simple",
 			"process");
-	std::unique_ptr<KernelOCL> kernel = std::make_unique<KernelOCL>(initInfo);
+	std::shared_ptr<KernelOCL> kernel = std::make_unique<KernelOCL>(initInfo);
 
 	for (int i = 0; i < numImages; ++i) {
 		hostToDevice[i] = std::make_unique<DualImageOCL>(dev, bufferWidth,
@@ -125,8 +125,8 @@ int main() {
 		for (int i = 0; i < numImages; ++i) {
 			bool lastBatch = j == numBatches - 1;
 			auto prev = currentJobInfo[i];
-			currentJobInfo[i] = new JobInfo<DualImageOCL>(dev, &hostToDevice[i],
-					&deviceToHost[i], prevJobInfo[i]);
+			currentJobInfo[i] = new JobInfo<DualImageOCL>(dev, hostToDevice[i],
+					deviceToHost[i], prevJobInfo[i]);
 			prevJobInfo[i] = prev;
 
 			// map
