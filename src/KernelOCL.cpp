@@ -27,15 +27,6 @@
 
 namespace ltk {
 
-EnqueueInfo::EnqueueInfo() :
-		queue(0), dimension(0), useOffset(false), num_events_in_wait_list(0), event_wait_list(
-				nullptr), needsCompletionEvent(true), completionEvent(0) {
-	for (int i = 0; i < 3; ++i) {
-		global_work_size[i] = 0;
-		global_work_offset[i] = 0;
-		local_work_size[i] = 0;
-	}
-}
 
 KernelOCL::KernelOCL(KernelInitInfo init) :
 		initInfo(init), myKernel(0), device(init.device->device), context(
@@ -135,19 +126,17 @@ std::string KernelOCL::getBuildOptions() {
 }
 
 // Enqueue the command to asynchronously execute the kernel on the device
-void KernelOCL::enqueue(EnqueueInfo &info) {
-	cl_event completionEvent;
-	cl_int error_code = clEnqueueNDRangeKernel(info.queue, myKernel,
+void KernelOCL::enqueue(EnqueueInfoOCL &info) {
+	cl_int error_code = clEnqueueNDRangeKernel(info.queue->getQueueImpl(), myKernel,
 			info.dimension, info.global_work_offset, info.global_work_size,
-			info.local_work_size, info.num_events_in_wait_list,
-			info.num_events_in_wait_list ? info.event_wait_list : NULL,
-			info.needsCompletionEvent ? &completionEvent : NULL);
+			info.local_work_size, info.numWaitEvents,
+			info.numWaitEvents ? (cl_event*)info.waitEvents : NULL,
+			info.needsCompletionEvent ? &info.completionEvent : NULL);
 	if (CL_SUCCESS != error_code) {
 		Util::LogError("Error: clEnqueueNDRangeKernel returned %s.\n",
 				Util::TranslateOpenCLError(error_code));
 		throw std::exception();
 	}
-	info.completionEvent = info.needsCompletionEvent ? completionEvent : 0;
 	argCount = 0;
 }
 }

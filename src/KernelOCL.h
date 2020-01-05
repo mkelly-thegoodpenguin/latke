@@ -24,6 +24,8 @@
 #include <string>
 #include "QueueOCL.h"
 #include "UtilOCL.h"
+#include "EnqueueInfoOCL.h"
+
 
 namespace ltk {
 
@@ -32,19 +34,6 @@ namespace ltk {
 #define BUILD_BINARY_OFFLINE				2
 #define BUILD_BINARY_OFFLINE_ALL_DEVICES	4
 
-struct EnqueueInfo {
-	EnqueueInfo();
-	cl_command_queue queue;
-	int dimension;
-	size_t global_work_size[3];
-	size_t global_work_offset[3];
-	bool useOffset;
-	size_t local_work_size[3];
-	cl_uint num_events_in_wait_list;
-	const cl_event *event_wait_list;
-	bool needsCompletionEvent;
-	cl_event completionEvent;
-};
 
 struct KernelInitInfoBase {
 	KernelInitInfoBase(DeviceOCL *dev, std::string bldOptions, std::string directory,
@@ -83,7 +72,7 @@ public:
 	cl_device_id getDevice() {
 		return device;
 	}
-	void enqueue(EnqueueInfo &info);
+	void enqueue(EnqueueInfoOCL &info);
 	virtual void generateBinary();
 
 	template<typename T> void pushArg(T *val) {

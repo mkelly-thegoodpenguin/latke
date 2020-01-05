@@ -29,7 +29,7 @@ add_library(latke STATIC
     ${CMAKE_CURRENT_SOURCE_DIR}/src/DualImageOCL.h
 	${CMAKE_CURRENT_SOURCE_DIR}/src/IDualMemOCL.h
     ${CMAKE_CURRENT_SOURCE_DIR}/src/QueueOCL.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/RunInfoOCL.h	
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/EnqueueInfoOCL.h	
 
 	${CMAKE_CURRENT_SOURCE_DIR}/src/DeviceOCL.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/DeviceOCL.h	
@@ -39,7 +39,7 @@ add_library(latke STATIC
 	${CMAKE_CURRENT_SOURCE_DIR}/src/QueueOCL.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/KernelOCL.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/UtilOCL.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/RunInfoOCL.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/EnqueueInfoOCL.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/ArchFactory.cpp
     
     ${CMAKE_CURRENT_SOURCE_DIR}/src/platform.cl

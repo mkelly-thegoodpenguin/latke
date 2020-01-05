@@ -186,7 +186,7 @@ int main() {
 			kernel->pushArg<cl_uint>(&bufferPitchOut);
 			kernel->pushArg<cl_int>(&bayer_pattern);
 
-			EnqueueInfo info;
+			EnqueueInfoOCL info(kernelQueue[i].get());
 			info.dimension = 2;
 			info.local_work_size[0] = tile_columns;
 			info.local_work_size[1] = tile_rows;
@@ -196,17 +196,12 @@ int main() {
 			info.global_work_size[1] = (size_t) std::ceil(
 					bufferHeight / (double) tile_rows)
 					* info.local_work_size[1];
-			info.queue = kernelQueue[i]->getQueueImpl();
 			info.needsCompletionEvent = true;
-			cl_event wait_events[2] = {
-					currentJobInfo[i]->hostToDevice->memUnmapped, 0 };
-			info.num_events_in_wait_list = 1;
+			info.pushWaitEvent(currentJobInfo[i]->hostToDevice->memUnmapped);
 			// wait for unmapping of previous deviceToHost
 			if (prev) {
-				wait_events[info.num_events_in_wait_list++] =
-						prev->deviceToHost->memUnmapped;
+				info.pushWaitEvent(prev->hostToDevice->memUnmapped);
 			}
-			info.event_wait_list = wait_events;
 			try {
 				kernel->enqueue(info);
 			} catch (std::exception &ex) {

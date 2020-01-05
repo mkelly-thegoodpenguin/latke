@@ -20,21 +20,32 @@
 #include "latke_config.h"
 #ifdef OPENCL_FOUND
 #include "platform.h"
-#include "RunInfoOCL.h"
+#include "QueueOCL.h"
+#include "EnqueueInfoOCL.h"
 
 
 namespace ltk {
 
-RunInfoOCL::RunInfoOCL(	QueueOCL* myQueue) :
-    queue(myQueue),
-    numWaitEvents(0),
-	needsCompletionEvent(false),
-	completionEvent(0)
-{}
 
-// push a wait event into the wait events array
-bool RunInfoOCL::pushWaitEvent(cl_event evt) {
-    if (numWaitEvents < MAX_EVENTS) {
+EnqueueInfoOCL::EnqueueInfoOCL(QueueOCL *myQueue):
+		queue(myQueue),
+		dimension(0),
+		useOffset(false),
+	    numWaitEvents(0),
+		needsCompletionEvent(false),
+		completionEvent(0)
+{
+	for (int i = 0; i < 3; ++i){
+		local_work_size[i]=0;
+		global_work_size[i]=0;
+		global_work_offset[i]=0;
+	}
+
+}
+
+// push a wait event into the wait events
+bool EnqueueInfoOCL::pushWaitEvent(cl_event evt) {
+    if (numWaitEvents < MAX_ENQUEUE_WAIT_EVENTS) {
         waitEvents[numWaitEvents++] = evt;
             return true;
     }
@@ -42,8 +53,8 @@ bool RunInfoOCL::pushWaitEvent(cl_event evt) {
 }
 
 // replace an existing wait event in the wait event array
-// Note: index must be less than numWaitEvents
-bool RunInfoOCL::setWaitEvent(cl_event evt, size_t index) {
+// Note: index must be less than numWait
+bool EnqueueInfoOCL::setWaitEvent(cl_event evt, size_t index) {
     if (index < numWaitEvents) {
         waitEvents[index] = evt;
         return true;
@@ -51,12 +62,6 @@ bool RunInfoOCL::setWaitEvent(cl_event evt, size_t index) {
     return false;
 }
 
-void RunInfoOCL::copyInto(EnqueueInfo* info) {
-	info->queue = queue->getQueueImpl();
-	info->num_events_in_wait_list = numWaitEvents;
-	info->event_wait_list = numWaitEvents ? waitEvents : NULL;
-	info->needsCompletionEvent = needsCompletionEvent;
-}
 
 }
 #endif

@@ -159,7 +159,7 @@ int main() {
 			kernel->pushArg<cl_mem>(hostToDevice[i]->getDeviceMem());
 			kernel->pushArg<cl_mem>(deviceToHost[i]->getDeviceMem());
 
-			EnqueueInfo info;
+			EnqueueInfoOCL info(kernelQueue[i].get());
 			info.dimension = 2;
 			info.local_work_size[0] = kernel_dim_x;
 			info.local_work_size[1] = kernel_dim_y;
@@ -169,17 +169,12 @@ int main() {
 			info.global_work_size[1] = (size_t) std::ceil(
 					bufferHeight / (double) kernel_dim_y)
 					* info.local_work_size[1];
-			info.queue = kernelQueue[i]->getQueueImpl();
 			info.needsCompletionEvent = true;
-			cl_event wait_events[2] = {
-					currentJobInfo[i]->hostToDevice->memUnmapped, 0 };
-			info.num_events_in_wait_list = 1;
+			info.pushWaitEvent(currentJobInfo[i]->hostToDevice->memUnmapped);
 			// wait for unmapping of previous deviceToHost
 			if (prev) {
-				wait_events[info.num_events_in_wait_list++] =
-						prev->deviceToHost->memUnmapped;
+				info.pushWaitEvent(prev->hostToDevice->memUnmapped);
 			}
-			info.event_wait_list = wait_events;
 			try {
 				kernel->enqueue(info);
 			} catch (std::exception &ex) {

@@ -21,12 +21,12 @@
 
 #include "DeviceOCL.h"
 #include "DeviceManagerOCL.h"
+#include "QueueOCL.h"
+#include "EnqueueInfoOCL.h"
 #include "DualBufferOCL.h"
 #include "DualImageOCL.h"
 #include "platform.h"
-#include "QueueOCL.h"
 #include "UtilOCL.h"
-#include "RunInfoOCL.h"
 #include "KernelOCL.h"
 
 

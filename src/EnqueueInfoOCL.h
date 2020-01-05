@@ -20,16 +20,17 @@
 #pragma once
 #include "latke_config.h"
 #ifdef OPENCL_FOUND
+#include "CL/cl.h"
 #include "QueueOCL.h"
-#include "KernelOCL.h"
+
 
 namespace ltk {
 
-const size_t MAX_EVENTS = 20;
 
-struct RunInfoOCL {
+const size_t MAX_ENQUEUE_WAIT_EVENTS = 64;
 
-	RunInfoOCL(QueueOCL* myQueue);
+struct EnqueueInfoOCL {
+	EnqueueInfoOCL(QueueOCL *myQueue);
 
     // push a wait event into the wait events array
 	bool pushWaitEvent(cl_event evt);
@@ -37,13 +38,17 @@ struct RunInfoOCL {
     // replace an existing wait event in the wait event array
     // Note: index must be less than numWaitEvents
 	bool setWaitEvent(cl_event evt, size_t index);
-	void copyInto(EnqueueInfo* info);
 
-    QueueOCL* queue;
-    cl_uint numWaitEvents;
-    cl_event waitEvents[MAX_EVENTS];
+	QueueOCL *queue;
+	int dimension;
+	size_t global_work_size[3];
+	size_t global_work_offset[3];
+	bool useOffset;
+	size_t local_work_size[3];
+	cl_uint numWaitEvents;
+	cl_event waitEvents[MAX_ENQUEUE_WAIT_EVENTS];
 	bool needsCompletionEvent;
-    cl_event completionEvent;
+	cl_event completionEvent;
 };
 
 }
