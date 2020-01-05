@@ -126,6 +126,7 @@ int main() {
 		buildOptions << " -D NVIDIA_ARCH";
 		break;
 	}
+	//buildOptions << " -D DEBUG";
 
 	KernelInitInfoBase initInfoBase(dev, buildOptions.str(), "",
 	BUILD_BINARY_IN_MEMORY);
@@ -135,7 +136,7 @@ int main() {
 
 	for (int i = 0; i < numImages; ++i) {
 		hostToDevice[i] = std::make_unique<DualBufferOCL>(dev, frameSize,true);
-		deviceToHost[i] = std::make_unique<DualBufferOCL>(dev, frameSize*bps_out, false);
+		deviceToHost[i] = std::make_unique<DualBufferOCL>(dev, frameSize*3 + 1, false);
 		kernelQueue[i] = std::make_unique<QueueOCL>(dev);
 		currentJobInfo[i] = nullptr;
 		prevJobInfo[i] = nullptr;
