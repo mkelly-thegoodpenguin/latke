@@ -143,7 +143,7 @@ int main(int argc, char *argv[]) {
 		buildOptions << " -D NVIDIA_ARCH";
 		break;
 	}
-	buildOptions << " -D OUTPUT_CHANNELS=" << bps_out;
+	buildOptions << " -D OUTPUT_CHANNELS=" << 3;
 	//buildOptions << " -D DEBUG";
 
 	KernelInitInfoBase initInfoBase(dev, buildOptions.str(), "",
