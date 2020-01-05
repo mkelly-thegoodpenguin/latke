@@ -129,9 +129,8 @@ void malvar_he_cutler_demosaic(const uint im_rows, const uint im_cols,
     //valid tasks read from [half_ksize, (tile_rows|tile_cols) + kernel_size - 1)
     const uint a_c = tile_col + half_ksize;
     const uint a_r = tile_row + half_ksize;
-    assert_val(a_c >= 0 && a_c < apron_cols, a_c);
-    assert_val(a_r >= 0 && a_r < apron_rows, a_r);
-    //const PixelT pixel = apron[a_r][a_c];
+    assert_val(a_c >= half_ksize && a_c < apron_cols - half_ksize, a_c);
+    assert_val(a_r >= half_ksize && a_r < apron_rows - half_ksize, a_r);
 
     //note the following formulas are col, row convention and uses i,j - this is done to preserve readability with the originating paper
     const uint i = a_c;
