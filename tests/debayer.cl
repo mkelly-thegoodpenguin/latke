@@ -231,7 +231,6 @@ void malvar_he_cutler_demosaic(const uint im_rows, const uint im_cols,
 #else
 #error "Unsupported number of output channels"
 #endif
-        // limit writes to suppress memory issue
        	pixel_at(RGBPixelT, output_image, g_r, g_c) = output;
     }
 }

@@ -84,12 +84,13 @@ void CL_CALLBACK DeviceToHostMappedCallback(cl_event event,
 
 int main() {
 	const uint32_t numBuffers =64;
-	uint32_t bps_out = 3;
+	uint32_t bps_out = 4;
 	uint32_t bufferWidth = 3840;
 	uint32_t bufferPitch = bufferWidth;
 	uint32_t bufferHeight = 2160;
 	uint32_t frameSize = bufferPitch * bufferHeight;
 	uint32_t bufferPitchOut = bufferWidth * bps_out;
+	uint32_t frameSizeOut = bufferPitchOut * bufferHeight;
 
 	// 1. create device manager
 	auto deviceManager = std::make_unique<DeviceManagerOCL>(true);
@@ -126,6 +127,7 @@ int main() {
 		buildOptions << " -D NVIDIA_ARCH";
 		break;
 	}
+	buildOptions << " -D OUTPUT_CHANNELS=" << bps_out;
 	//buildOptions << " -D DEBUG";
 
 	KernelInitInfoBase initInfoBase(dev, buildOptions.str(), "",
@@ -136,7 +138,7 @@ int main() {
 
 	for (int i = 0; i < numImages; ++i) {
 		hostToDevice[i] = std::make_unique<DualBufferOCL>(dev, frameSize,true);
-		deviceToHost[i] = std::make_unique<DualBufferOCL>(dev, frameSize*3 + 1, false);
+		deviceToHost[i] = std::make_unique<DualBufferOCL>(dev, frameSizeOut, false);
 		kernelQueue[i] = std::make_unique<QueueOCL>(dev);
 		currentJobInfo[i] = nullptr;
 		prevJobInfo[i] = nullptr;
