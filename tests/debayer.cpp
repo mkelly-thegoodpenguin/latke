@@ -32,6 +32,7 @@
 #include "stb_image.h"
 #include "stb_image_write.h"
 #include <string>
+#include "ThreadPool.h"
 
 using namespace ltk;
 
@@ -65,7 +66,6 @@ enum pattern_t{
 BlockingQueue<JobInfo<DualBufferOCL>*> mappedHostToDeviceQueue;
 BlockingQueue<JobInfo<DualBufferOCL>*> mappedDeviceToHostQueue;
 BlockingQueue<uint8_t*> availableBuffers;
-BlockingQueue<uint8_t*> postProcBufferQueue;
 
 void CL_CALLBACK HostToDeviceMappedCallback(cl_event event,
 		cl_int cmd_exec_status, void *user_data) {
@@ -275,6 +275,8 @@ int main(int argc, char *argv[]) {
 		}
 	}
 
+	auto postProcPool = new ThreadPool( std::thread::hardware_concurrency());
+
 	auto start = std::chrono::high_resolution_clock::now();
 
 	// wait for images from queue, fill them, and trigger unmap event
@@ -294,27 +296,9 @@ int main(int argc, char *argv[]) {
 		}
 	});
 
-
-	std::thread postProc([bufferWidth, bufferHeight, frameSizeOut, bps_out]() {
-		uint8_t* buf;
-		int count = 0;
-		while (postProcBufferQueue.waitAndPop(buf)) {
-		  // store as png
-          //for (int i = 0; i < )
-		  std::stringstream fileName;
-		  fileName << "debayer" << count <<".png";
-		  stbi_write_png(fileName.str().c_str(), bufferWidth, bufferHeight, bps_out,buf,  bufferWidth*bps_out);
-		  availableBuffers.push(buf);
-		  count++;
-		  if (count == numBuffers)
-				break;
-		}
-	});
-
-
 	// wait for processed images from queue, handle them,
 	// and trigger unmap event
-	std::thread pullImages([frameSizeOut]() {
+	std::thread pullImages([frameSizeOut, &postProcPool,bufferWidth,bufferHeight, bps_out]() {
 		JobInfo<DualBufferOCL> *info = nullptr;
 		int count = 0;
 		while (mappedDeviceToHostQueue.waitAndPop(info)) {
@@ -327,7 +311,13 @@ int main(int argc, char *argv[]) {
 			uint8_t* buf;
 			if (availableBuffers.waitAndPop(buf)){
 				memcpy(buf, info->deviceToHost->mem->getHostBuffer(), frameSizeOut);
-				postProcBufferQueue.push(buf);
+				auto evt = [buf, count, bufferWidth,bufferHeight,bps_out] {
+				  std::stringstream fileName;
+				  fileName << "debayer" << count <<".png";
+				  stbi_write_png(fileName.str().c_str(), bufferWidth, bufferHeight, bps_out,buf,  bufferWidth*bps_out);
+				  availableBuffers.push(buf);
+				};
+				postProcPool->enqueue(evt);
 			}
 
 			// trigger unmap, allowing next kernel to proceed
@@ -344,7 +334,7 @@ int main(int argc, char *argv[]) {
 
 	pushImages.join();
 	pullImages.join();
-	postProc.join();
+	delete postProcPool;
 
 	auto finish = std::chrono::high_resolution_clock::now();
 	std::chrono::duration<double> elapsed = finish - start;
