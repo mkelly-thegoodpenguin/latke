@@ -1,100 +1,17 @@
-/*
- * Copyright 2016-2020 Grok Image Compression Inc.
- *
- * This library is free software; you can redistribute it and/or
- * modify it under the terms of the GNU Library General Public
- * License as published by the Free Software Foundation; either
- * version 2 of the License, or (at your option) any later version.
- *
- * This library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * Library General Public License for more details.
- *
- * You should have received a copy of the GNU Library General Public
- * License along with this library; if not, write to the
- * Free Software Foundation, Inc., 51 Franklin St, Fifth Floor,
- * Boston, MA 02110-1301, USA.
- */
+#include "debayer.h"
 
-#include <iostream>
-#include <memory>
-#include <sstream>
-#include "latke.h"
-#include "BlockingQueue.h"
-#include <math.h>
-#include <chrono>
-#include <cassert>
-#include <thread>
-#include "ArchFactory.h"
-#define STB_IMAGE_IMPLEMENTATION
-#define STB_IMAGE_WRITE_IMPLEMENTATION
-#include "stb_image.h"
-#include "stb_image_write.h"
-#include <string>
-#include "ThreadPool.h"
-
-using namespace ltk;
-
-template<typename M> struct JobInfo {
-	JobInfo(DeviceOCL *dev, std::shared_ptr<M> hostToDev,
-			std::shared_ptr<M> devToHost, JobInfo *previous) :
-			hostToDevice(new MemMapEvents<M>(dev, hostToDev)), kernelCompleted(
-					0), deviceToHost(new MemMapEvents<M>(dev, devToHost)), prev(
-					previous) {
-	}
-	~JobInfo() {
-		delete hostToDevice;
-		Util::ReleaseEvent(kernelCompleted);
-		delete deviceToHost;
-	}
-
-	MemMapEvents<M> *hostToDevice;
-	cl_event kernelCompleted;
-	MemMapEvents<M> *deviceToHost;
-
-	JobInfo *prev;
-};
-
-enum pattern_t{
-    RGGB = 0,
-    GRBG = 1,
-    GBRG = 2,
-    BGGR = 3
-};
-
-BlockingQueue<JobInfo<DualBufferOCL>*> mappedHostToDeviceQueue;
-BlockingQueue<JobInfo<DualBufferOCL>*> mappedDeviceToHostQueue;
-BlockingQueue<uint8_t*> availableBuffers;
-
-void CL_CALLBACK HostToDeviceMappedCallback(cl_event event,
-		cl_int cmd_exec_status, void *user_data) {
-
-	assert(user_data);
-
-	auto info = (JobInfo<DualBufferOCL>*) user_data;
-
-	// push mapped image into queue
-	mappedHostToDeviceQueue.push(info);
-}
-
-void CL_CALLBACK DeviceToHostMappedCallback(cl_event event,
-		cl_int cmd_exec_status, void *user_data) {
-
-	assert(user_data);
-	// handle processed data
-	auto info = (JobInfo<DualBufferOCL>*) user_data;
-
-	// push mapped image into queue
-	mappedDeviceToHostQueue.push(info);
-}
-
-int main(int argc, char *argv[]) {
+template <typename M, typename A> int Debayer<M,A>::debayer(int argc, char *argv[],
+		pfn_event_notify HostToDeviceMappedCallback,
+		pfn_event_notify DeviceToHostMappedCallback,
+		std::string kernelFile){
 	if (argc < 2)
-		exit(-1);
+		return -1;
+
+	BlockingQueue<uint8_t*> availableBuffers;
+	std::string fileName = argv[1];
 
 	int width=0, height=0, channels=0;
-	unsigned char *image = stbi_load(argv[1],
+	unsigned char *image = stbi_load(fileName.c_str(),
 	                                 &width,
 	                                 &height,
 	                                 &channels,
@@ -115,14 +32,12 @@ int main(int argc, char *argv[]) {
 
 	}
 
-	const uint32_t numBuffers =16;
 	uint32_t bps_out = 4;
 	uint32_t bufferPitch = bufferWidth;
 	uint32_t frameSize = bufferPitch * bufferHeight;
 	uint32_t bufferPitchOut = bufferWidth * bps_out;
 	uint32_t frameSizeOut = bufferPitchOut * bufferHeight;
 
-	const int numPostProcBuffers = 16;
 	uint8_t* postProcBuffers[numPostProcBuffers];
 	for (int i=0; i < numPostProcBuffers; ++i) {
 		postProcBuffers[i] = new uint8_t[frameSizeOut];
@@ -135,24 +50,20 @@ int main(int argc, char *argv[]) {
 	auto rc = deviceManager->init(0, true);
 	if (rc != DeviceSuccess) {
 		std::cout << "Failed to initialize OpenCL device";
-		exit(-1);
+		return -1;
 	}
 
 	auto dev = deviceManager->getDevice(0);
 
 	auto arch = ArchFactory::getArchitecture(dev->deviceInfo->venderId);
 
-	const int numImages = 4;
-	const int numBatches = numBuffers / numImages;
 
-	std::shared_ptr<DualBufferOCL> hostToDevice[numImages];
-	std::shared_ptr<DualBufferOCL> deviceToHost[numImages];
+	std::shared_ptr<M> hostToDevice[numImages];
+	std::shared_ptr<M> deviceToHost[numImages];
 	std::shared_ptr<QueueOCL> kernelQueue[numImages];
-	JobInfo<DualBufferOCL> *currentJobInfo[numImages];
-	JobInfo<DualBufferOCL> *prevJobInfo[numImages];
+	JobInfo<M> *currentJobInfo[numImages];
+	JobInfo<M> *prevJobInfo[numImages];
 
-	const int tile_rows = 5;
-	const int tile_columns = 32;
 	std::stringstream buildOptions;
 	buildOptions << " -I ./ ";
 	buildOptions << " -D TILE_ROWS=" << tile_rows;
@@ -170,13 +81,16 @@ int main(int argc, char *argv[]) {
 
 	KernelInitInfoBase initInfoBase(dev, buildOptions.str(), "",
 	BUILD_BINARY_IN_MEMORY);
-	KernelInitInfo initInfo(initInfoBase, "debayer.cl", "debayer",
+	KernelInitInfo initInfo(initInfoBase, kernelFile, "debayer",
 			"malvar_he_cutler_demosaic");
 	std::shared_ptr<KernelOCL> kernel = std::make_unique<KernelOCL>(initInfo);
 
+	A allocator(dev,bufferWidth,bufferHeight,1);
+	A allocatorOut(dev,bufferWidth,bufferHeight,4);
 	for (int i = 0; i < numImages; ++i) {
-		hostToDevice[i] = std::make_unique<DualBufferOCL>(dev, frameSize,true);
-		deviceToHost[i] = std::make_unique<DualBufferOCL>(dev, frameSizeOut, false);
+
+		hostToDevice[i] = allocator.allocate(true);
+		deviceToHost[i] = allocatorOut.allocate(false);
 		kernelQueue[i] = std::make_unique<QueueOCL>(dev);
 		currentJobInfo[i] = nullptr;
 		prevJobInfo[i] = nullptr;
@@ -187,7 +101,7 @@ int main(int argc, char *argv[]) {
 		for (int i = 0; i < numImages; ++i) {
 			bool lastBatch = j == numBatches - 1;
 			auto prev = currentJobInfo[i];
-			currentJobInfo[i] = new JobInfo<DualBufferOCL>(dev, hostToDevice[i],
+			currentJobInfo[i] = new JobInfo<M>(dev, hostToDevice[i],
 					deviceToHost[i], prevJobInfo[i]);
 			prevJobInfo[i] = prev;
 
@@ -202,7 +116,7 @@ int main(int argc, char *argv[]) {
 			// set callback, which will add this image
 			// info to host-side queue of mapped buffers
 			auto error_code = clSetEventCallback(hostToDeviceMapped,
-			CL_COMPLETE, &HostToDeviceMappedCallback, currentJobInfo[i]);
+			CL_COMPLETE, HostToDeviceMappedCallback, currentJobInfo[i]);
 			if (DeviceSuccess != error_code) {
 				Util::LogError("Error: clSetEventCallback returned %s.\n",
 						Util::TranslateOpenCLError(error_code));
@@ -256,7 +170,7 @@ int main(int argc, char *argv[]) {
 			}
 			// set callback on mapping
 			error_code = clSetEventCallback(deviceToHostMapped,
-			CL_COMPLETE, &DeviceToHostMappedCallback, currentJobInfo[i]);
+			CL_COMPLETE, DeviceToHostMappedCallback, currentJobInfo[i]);
 			if (DeviceSuccess != error_code) {
 				Util::LogError("Error: clSetEventCallback returned %s.\n",
 						Util::TranslateOpenCLError(error_code));
@@ -280,8 +194,8 @@ int main(int argc, char *argv[]) {
 	auto start = std::chrono::high_resolution_clock::now();
 
 	// wait for images from queue, fill them, and trigger unmap event
-	std::thread pushImages([frameSize,image]() {
-		JobInfo<DualBufferOCL> *info = nullptr;
+	std::thread pushImages([this,frameSize,image]() {
+		JobInfo<M> *info = nullptr;
 		int count = 0;
 		while (mappedHostToDeviceQueue.waitAndPop(info)) {
 			/*
@@ -298,8 +212,8 @@ int main(int argc, char *argv[]) {
 
 	// wait for processed images from queue, handle them,
 	// and trigger unmap event
-	std::thread pullImages([frameSizeOut, &postProcPool,bufferWidth,bufferHeight, bps_out]() {
-		JobInfo<DualBufferOCL> *info = nullptr;
+	std::thread pullImages([this,frameSizeOut, &postProcPool,bufferWidth,bufferHeight, bps_out, &availableBuffers, fileName]() {
+		JobInfo<M> *info = nullptr;
 		int count = 0;
 		while (mappedDeviceToHostQueue.waitAndPop(info)) {
 
@@ -311,10 +225,10 @@ int main(int argc, char *argv[]) {
 			uint8_t* buf;
 			if (availableBuffers.waitAndPop(buf)){
 				memcpy(buf, info->deviceToHost->mem->getHostBuffer(), frameSizeOut);
-				auto evt = [buf, count, bufferWidth,bufferHeight,bps_out] {
-				  std::stringstream fileName;
-				  fileName << "debayer" << count <<".png";
-				  stbi_write_png(fileName.str().c_str(), bufferWidth, bufferHeight, bps_out,buf,  bufferWidth*bps_out);
+				auto evt = [buf, count, bufferWidth,bufferHeight,bps_out, &availableBuffers, fileName] {
+				  std::stringstream f;
+				  f << fileName << count <<".png";
+				  stbi_write_png(f.str().c_str(), bufferWidth, bufferHeight, bps_out,buf,  bufferWidth*bps_out);
 				  availableBuffers.push(buf);
 				};
 				postProcPool->enqueue(evt);
@@ -352,3 +266,4 @@ int main(int argc, char *argv[]) {
 			(elapsed.count() * 1000) / (double) numBuffers);
 	return 0;
 }
+

@@ -46,20 +46,20 @@ struct KernelInitInfoBase {
 					other.directory), binaryBuildMethod(other.binaryBuildMethod) {
 	}
 	DeviceOCL *device;
-	string buildOptions;
+	std::string buildOptions;
 	std::string directory;
 	uint32_t binaryBuildMethod;
 };
 
 struct KernelInitInfo: KernelInitInfoBase {
-	KernelInitInfo(KernelInitInfoBase initInfo, string progName,
-			string binaryName, string knlName) :
+	KernelInitInfo(KernelInitInfoBase initInfo, std::string progName,
+			std::string binaryName, std::string knlName) :
 			KernelInitInfoBase(initInfo), programName(progName), binaryName(
 					binaryName), kernelName(knlName) {
 	}
-	string programName;
-	string binaryName;
-	string kernelName;
+	std::string programName;
+	std::string binaryName;
+	std::string kernelName;
 };
 
 class KernelOCL {
