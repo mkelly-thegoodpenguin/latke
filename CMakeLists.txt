@@ -64,11 +64,8 @@ endforeach()
 
 # tests
 
-add_executable(simple tests/simple.cpp)
-target_link_libraries(simple latke ${OPENCL_LIBRARIES} Threads::Threads)
+add_executable(debayer_buffer tests/debayerBuffer.cpp)
+target_link_libraries(debayer_buffer latke ${OPENCL_LIBRARIES} Threads::Threads)
 
-add_executable(debayer tests/debayerBuffer.cpp)
-target_link_libraries(debayer latke ${OPENCL_LIBRARIES} Threads::Threads)
-
-add_executable(debayer2 tests/debayerImage.cpp)
-target_link_libraries(debayer2 latke ${OPENCL_LIBRARIES} Threads::Threads)
+add_executable(debayer_image tests/debayerImage.cpp)
+target_link_libraries(debayer_image latke ${OPENCL_LIBRARIES} Threads::Threads)

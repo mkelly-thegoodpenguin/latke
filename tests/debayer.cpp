@@ -1,27 +1,42 @@
+/*
+ * Copyright 2016-2020 Grok Image Compression Inc.
+ *
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Library General Public
+ * License as published by the Free Software Foundation; either
+ * version 2 of the License, or (at your option) any later version.
+ *
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Library General Public License for more details.
+ *
+ * You should have received a copy of the GNU Library General Public
+ * License along with this library; if not, write to the
+ * Free Software Foundation, Inc., 51 Franklin St, Fifth Floor,
+ * Boston, MA 02110-1301, USA.
+ */
+
 #include "debayer.h"
 
-template <typename M, typename A> int Debayer<M,A>::debayer(int argc, char *argv[],
-		pfn_event_notify HostToDeviceMappedCallback,
-		pfn_event_notify DeviceToHostMappedCallback,
-		std::string kernelFile){
+template<typename M, typename A> int Debayer<M, A>::debayer(int argc,
+		char *argv[], pfn_event_notify HostToDeviceMappedCallback,
+		pfn_event_notify DeviceToHostMappedCallback, std::string kernelFile) {
 	if (argc < 2)
 		return -1;
 
 	BlockingQueue<uint8_t*> availableBuffers;
 	std::string fileName = argv[1];
 
-	int width=0, height=0, channels=0;
-	unsigned char *image = stbi_load(fileName.c_str(),
-	                                 &width,
-	                                 &height,
-	                                 &channels,
-	                                 STBI_grey);
+	int width = 0, height = 0, channels = 0;
+	unsigned char *image = stbi_load(fileName.c_str(), &width, &height,
+			&channels, STBI_grey);
 
 	uint32_t bufferWidth = width;
 	uint32_t bufferHeight = height;
 
 	int bayer_pattern = RGGB;
-	if (argc >= 3){
+	if (argc >= 3) {
 		std::string patt = argv[2];
 		if (patt == "GRBG")
 			bayer_pattern = GRBG;
@@ -38,12 +53,11 @@ template <typename M, typename A> int Debayer<M,A>::debayer(int argc, char *argv
 	uint32_t bufferPitchOut = bufferWidth * bps_out;
 	uint32_t frameSizeOut = bufferPitchOut * bufferHeight;
 
-	uint8_t* postProcBuffers[numPostProcBuffers];
-	for (int i=0; i < numPostProcBuffers; ++i) {
+	uint8_t *postProcBuffers[numPostProcBuffers];
+	for (int i = 0; i < numPostProcBuffers; ++i) {
 		postProcBuffers[i] = new uint8_t[frameSizeOut];
 		availableBuffers.push(postProcBuffers[i]);
 	}
-
 
 	// 1. create device manager
 	auto deviceManager = std::make_shared<DeviceManagerOCL>(true);
@@ -57,7 +71,6 @@ template <typename M, typename A> int Debayer<M,A>::debayer(int argc, char *argv
 
 	auto arch = ArchFactory::getArchitecture(dev->deviceInfo->venderId);
 
-
 	std::shared_ptr<M> hostToDevice[numImages];
 	std::shared_ptr<M> deviceToHost[numImages];
 	std::shared_ptr<QueueOCL> kernelQueue[numImages];
@@ -68,7 +81,7 @@ template <typename M, typename A> int Debayer<M,A>::debayer(int argc, char *argv
 	buildOptions << " -I ./ ";
 	buildOptions << " -D TILE_ROWS=" << tile_rows;
 	buildOptions << " -D TILE_COLS=" << tile_columns;
-	switch (arch->getVendorId()){
+	switch (arch->getVendorId()) {
 	case vendorIdAMD:
 		buildOptions << " -D AMD_GPU_ARCH";
 		break;
@@ -85,8 +98,8 @@ template <typename M, typename A> int Debayer<M,A>::debayer(int argc, char *argv
 			"malvar_he_cutler_demosaic");
 	std::shared_ptr<KernelOCL> kernel = std::make_unique<KernelOCL>(initInfo);
 
-	A allocator(dev,bufferWidth,bufferHeight,1);
-	A allocatorOut(dev,bufferWidth,bufferHeight,4);
+	A allocator(dev, bufferWidth, bufferHeight, 1);
+	A allocatorOut(dev, bufferWidth, bufferHeight, 4);
 	for (int i = 0; i < numImages; ++i) {
 
 		hostToDevice[i] = allocator.allocate(true);
@@ -189,12 +202,12 @@ template <typename M, typename A> int Debayer<M,A>::debayer(int argc, char *argv
 		}
 	}
 
-	auto postProcPool = new ThreadPool( std::thread::hardware_concurrency());
+	auto postProcPool = new ThreadPool(std::thread::hardware_concurrency());
 
 	auto start = std::chrono::high_resolution_clock::now();
 
 	// wait for images from queue, fill them, and trigger unmap event
-	std::thread pushImages([this,frameSize,image]() {
+	std::thread pushImages([this, frameSize, image]() {
 		JobInfo<M> *info = nullptr;
 		int count = 0;
 		while (mappedHostToDeviceQueue.waitAndPop(info)) {
@@ -212,39 +225,43 @@ template <typename M, typename A> int Debayer<M,A>::debayer(int argc, char *argv
 
 	// wait for processed images from queue, handle them,
 	// and trigger unmap event
-	std::thread pullImages([this,frameSizeOut, &postProcPool,bufferWidth,bufferHeight, bps_out, &availableBuffers, fileName]() {
-		JobInfo<M> *info = nullptr;
-		int count = 0;
-		while (mappedDeviceToHostQueue.waitAndPop(info)) {
+	std::thread pullImages(
+			[this, frameSizeOut, &postProcPool, bufferWidth, bufferHeight,
+					bps_out, &availableBuffers, fileName]() {
+				JobInfo<M> *info = nullptr;
+				int count = 0;
+				while (mappedDeviceToHostQueue.waitAndPop(info)) {
 
-			/*
-			 *
-			 * handle processed image memory
-			 *
-			 */
-			uint8_t* buf;
-			if (availableBuffers.waitAndPop(buf)){
-				memcpy(buf, info->deviceToHost->mem->getHostBuffer(), frameSizeOut);
-				auto evt = [buf, count, bufferWidth,bufferHeight,bps_out, &availableBuffers, fileName] {
-				  std::stringstream f;
-				  f << fileName << count <<".png";
-				  stbi_write_png(f.str().c_str(), bufferWidth, bufferHeight, bps_out,buf,  bufferWidth*bps_out);
-				  availableBuffers.push(buf);
-				};
-				postProcPool->enqueue(evt);
-			}
+					/*
+					 *
+					 * handle processed image memory
+					 *
+					 */
+					uint8_t *buf;
+					if (availableBuffers.waitAndPop(buf)) {
+						memcpy(buf, info->deviceToHost->mem->getHostBuffer(),
+								frameSizeOut);
+						auto evt = [buf, count, bufferWidth, bufferHeight,
+								bps_out, &availableBuffers, fileName] {
+		std::stringstream f;
+		f << fileName << count <<".png";
+		stbi_write_png(f.str().c_str(), bufferWidth, bufferHeight, bps_out,buf, bufferWidth*bps_out);
+		availableBuffers.push(buf);
+	};
+						postProcPool->enqueue(evt);
+					}
 
-			// trigger unmap, allowing next kernel to proceed
-			Util::SetEventComplete(info->deviceToHost->triggerMemUnmap);
+					// trigger unmap, allowing next kernel to proceed
+					Util::SetEventComplete(info->deviceToHost->triggerMemUnmap);
 
-			// cleanup
-			delete info->prev;
-			info->prev = nullptr;
-			count++;
-			if (count == numBuffers)
-				break;
-		}
-	});
+					// cleanup
+					delete info->prev;
+					info->prev = nullptr;
+					count++;
+					if (count == numBuffers)
+						break;
+				}
+			});
 
 	pushImages.join();
 	pullImages.join();
@@ -254,7 +271,7 @@ template <typename M, typename A> int Debayer<M,A>::debayer(int argc, char *argv
 	delete postProcPool;
 
 	// cleanup
-	for (int i=0; i < numPostProcBuffers; ++i)
+	for (int i = 0; i < numPostProcBuffers; ++i)
 		delete[] postProcBuffers[i];
 	for (int i = 0; i < numImages; ++i) {
 		deviceToHost[i]->unmap(0, nullptr, nullptr);
