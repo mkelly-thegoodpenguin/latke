@@ -115,14 +115,14 @@ int main(int argc, char *argv[]) {
 
 	}
 
-	const uint32_t numBuffers =8;
+	const uint32_t numBuffers =16;
 	uint32_t bps_out = 4;
 	uint32_t bufferPitch = bufferWidth;
 	uint32_t frameSize = bufferPitch * bufferHeight;
 	uint32_t bufferPitchOut = bufferWidth * bps_out;
 	uint32_t frameSizeOut = bufferPitchOut * bufferHeight;
 
-	const int numPostProcBuffers = 10;
+	const int numPostProcBuffers = 16;
 	uint8_t* postProcBuffers[numPostProcBuffers];
 	for (int i=0; i < numPostProcBuffers; ++i) {
 		postProcBuffers[i] = new uint8_t[frameSizeOut];
@@ -334,10 +334,10 @@ int main(int argc, char *argv[]) {
 
 	pushImages.join();
 	pullImages.join();
-	delete postProcPool;
 
 	auto finish = std::chrono::high_resolution_clock::now();
 	std::chrono::duration<double> elapsed = finish - start;
+	delete postProcPool;
 
 	// cleanup
 	for (int i=0; i < numPostProcBuffers; ++i)
@@ -348,7 +348,7 @@ int main(int argc, char *argv[]) {
 		delete currentJobInfo[i];
 	}
 	delete arch;
-	fprintf(stdout, "time per image = %f ms\n",
+	fprintf(stdout, "opencl processing time per image = %f ms\n",
 			(elapsed.count() * 1000) / (double) numBuffers);
 	return 0;
 }
