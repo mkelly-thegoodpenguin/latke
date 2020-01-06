@@ -31,6 +31,7 @@
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "stb_image.h"
 #include "stb_image_write.h"
+#include <string>
 
 using namespace ltk;
 
@@ -63,6 +64,8 @@ enum pattern_t{
 
 BlockingQueue<JobInfo<DualBufferOCL>*> mappedHostToDeviceQueue;
 BlockingQueue<JobInfo<DualBufferOCL>*> mappedDeviceToHostQueue;
+BlockingQueue<uint8_t*> availableBuffers;
+BlockingQueue<uint8_t*> postProcBufferQueue;
 
 void CL_CALLBACK HostToDeviceMappedCallback(cl_event event,
 		cl_int cmd_exec_status, void *user_data) {
@@ -87,7 +90,7 @@ void CL_CALLBACK DeviceToHostMappedCallback(cl_event event,
 }
 
 int main(int argc, char *argv[]) {
-	if (argc != 2)
+	if (argc < 2)
 		exit(-1);
 
 	int width=0, height=0, channels=0;
@@ -100,12 +103,31 @@ int main(int argc, char *argv[]) {
 	uint32_t bufferWidth = width;
 	uint32_t bufferHeight = height;
 
-	const uint32_t numBuffers =64;
+	int bayer_pattern = RGGB;
+	if (argc >= 3){
+		std::string patt = argv[2];
+		if (patt == "GRBG")
+			bayer_pattern = GRBG;
+		else if (patt == "GBRG")
+			bayer_pattern = GBRG;
+		else if (patt == "BGGR")
+			bayer_pattern = BGGR;
+
+	}
+
+	const uint32_t numBuffers =8;
 	uint32_t bps_out = 4;
 	uint32_t bufferPitch = bufferWidth;
 	uint32_t frameSize = bufferPitch * bufferHeight;
 	uint32_t bufferPitchOut = bufferWidth * bps_out;
 	uint32_t frameSizeOut = bufferPitchOut * bufferHeight;
+
+	const int numPostProcBuffers = 10;
+	uint8_t* postProcBuffers[numPostProcBuffers];
+	for (int i=0; i < numPostProcBuffers; ++i) {
+		postProcBuffers[i] = new uint8_t[frameSizeOut];
+		availableBuffers.push(postProcBuffers[i]);
+	}
 
 
 	// 1. create device manager
@@ -143,7 +165,7 @@ int main(int argc, char *argv[]) {
 		buildOptions << " -D NVIDIA_ARCH";
 		break;
 	}
-	buildOptions << " -D OUTPUT_CHANNELS=" << 3;
+	buildOptions << " -D OUTPUT_CHANNELS=" << bps_out;
 	//buildOptions << " -D DEBUG";
 
 	KernelInitInfoBase initInfoBase(dev, buildOptions.str(), "",
@@ -195,7 +217,6 @@ int main(int argc, char *argv[]) {
 				return -1;
 			}
 
-			int bayer_pattern = RGGB;
 			kernel->pushArg<cl_uint>(&bufferHeight);
 			kernel->pushArg<cl_uint>(&bufferWidth);
 			kernel->pushArg<cl_mem>(hostToDevice[i]->getDeviceMem());
@@ -273,9 +294,27 @@ int main(int argc, char *argv[]) {
 		}
 	});
 
+
+	std::thread postProc([bufferWidth, bufferHeight, frameSizeOut, bps_out]() {
+		uint8_t* buf;
+		int count = 0;
+		while (postProcBufferQueue.waitAndPop(buf)) {
+		  // store as png
+          //for (int i = 0; i < )
+		  std::stringstream fileName;
+		  fileName << "debayer" << count <<".png";
+		  stbi_write_png(fileName.str().c_str(), bufferWidth, bufferHeight, bps_out,buf,  bufferWidth*bps_out);
+		  availableBuffers.push(buf);
+		  count++;
+		  if (count == numBuffers)
+				break;
+		}
+	});
+
+
 	// wait for processed images from queue, handle them,
 	// and trigger unmap event
-	std::thread pullImages([]() {
+	std::thread pullImages([frameSizeOut]() {
 		JobInfo<DualBufferOCL> *info = nullptr;
 		int count = 0;
 		while (mappedDeviceToHostQueue.waitAndPop(info)) {
@@ -285,6 +324,11 @@ int main(int argc, char *argv[]) {
 			 * handle processed image memory
 			 *
 			 */
+			uint8_t* buf;
+			if (availableBuffers.waitAndPop(buf)){
+				memcpy(buf, info->deviceToHost->mem->getHostBuffer(), frameSizeOut);
+				postProcBufferQueue.push(buf);
+			}
 
 			// trigger unmap, allowing next kernel to proceed
 			Util::SetEventComplete(info->deviceToHost->triggerMemUnmap);
@@ -300,11 +344,14 @@ int main(int argc, char *argv[]) {
 
 	pushImages.join();
 	pullImages.join();
+	postProc.join();
 
 	auto finish = std::chrono::high_resolution_clock::now();
 	std::chrono::duration<double> elapsed = finish - start;
 
 	// cleanup
+	for (int i=0; i < numPostProcBuffers; ++i)
+		delete[] postProcBuffers[i];
 	for (int i = 0; i < numImages; ++i) {
 		deviceToHost[i]->unmap(0, nullptr, nullptr);
 		delete currentJobInfo[i]->prev;
