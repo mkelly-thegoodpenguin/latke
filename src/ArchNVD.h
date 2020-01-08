@@ -31,9 +31,12 @@ public:
 	size_t getWaveFrontSize() {
 		return 32;
 	}
-	virtual cl_uint getVendorId(){
+	cl_uint getVendorId(){
 		return vendorIdNVD;
 	}
+  std::string getBuildOptions(){
+      return "";
+  }
 };
 
 }

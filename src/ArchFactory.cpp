@@ -27,6 +27,8 @@ IArch* ArchFactory::getArchitecture(cl_uint vendorId){
 		return new ArchAMD();
 	case vendorIdNVD:
 		return new ArchNVD();
+  case vendorIdINTL:
+    return new ArchINTL();
 	default:
 		return nullptr;
 	}

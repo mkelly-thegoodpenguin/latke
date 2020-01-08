@@ -31,9 +31,12 @@ public:
 	size_t getWaveFrontSize() {
 		return 64;
 	}
-	virtual cl_uint getVendorId(){
+	cl_uint getVendorId(){
 		return vendorIdAMD;
 	}
+  std::string getBuildOptions(){
+      return " -fno-bin-llvmir -fno-bin-amdil -fno-bin-source ";
+  }
 };
 
 }

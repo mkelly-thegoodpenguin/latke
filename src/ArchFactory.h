@@ -23,6 +23,7 @@
 #include "IArch.h"
 #include "ArchAMD.h"
 #include "ArchNVD.h"
+#include "ArchINTL.h"
 
 namespace ltk {
 

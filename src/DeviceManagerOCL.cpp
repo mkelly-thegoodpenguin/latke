@@ -47,117 +47,123 @@ const int32_t ALL_GPU_DEVICES = -1;
 const int32_t FALLBACK_TO_HOST = -2;
 
 DeviceManagerOCL::DeviceManagerOCL(bool singleCtxt) :
-		singleContext(singleCtxt), context(0) {
+        singleContext(singleCtxt), context(0) {
 }
 
 DeviceManagerOCL::~DeviceManagerOCL(void) {
-	for (auto &dev : devices)
-		delete dev;
+    for (auto &dev : devices)
+        delete dev;
 
-	if (context) {
-		auto status = clReleaseContext(context);
-		CHECK_OPENCL_ERROR_NO_RETURN(status, "clReleaseContext failed.");
-	}
+    if (context) {
+        auto status = clReleaseContext(context);
+        CHECK_OPENCL_ERROR_NO_RETURN(status, "clReleaseContext failed.");
+    }
 }
 
 DeviceOCL* DeviceManagerOCL::getDevice(size_t deviceId) {
-	if (deviceId >= devices.size())
-		return nullptr;
-	return devices[deviceId];
+    if (deviceId >= devices.size())
+        return nullptr;
+    return devices[deviceId];
 }
 
 int DeviceManagerOCL::init(int32_t deviceId, bool verbose) {
-	eDeviceType firstTry =
-			(deviceId >= 0 || deviceId == ALL_GPU_DEVICES) ? GPU : CPU;
-	int rc = init(firstTry, deviceId, verbose);
-	if (rc != DeviceSuccess && firstTry != CPU)
-		rc = init(CPU, deviceId, verbose);
-	return rc;
+    eDeviceType firstTry =
+            (deviceId >= 0 || deviceId == ALL_GPU_DEVICES) ? GPU : CPU;
+    if (verbose)
+        std::cout << "Initializing " << ((firstTry == GPU) ? "GPU." : "CPU.")
+                << std::endl;
+    int rc = init(firstTry, deviceId, verbose);
+    if (rc != DeviceSuccess && firstTry != CPU) {
+        if (verbose)
+            std::cout << "Initializing " << "CPU." << std::endl;
+        rc = init(CPU, deviceId, verbose);
+    }
+    return rc;
 }
 
 int DeviceManagerOCL::init(eDeviceType type, int32_t deviceId, bool verbose) {
-	bool isCpu = type == CPU;
-	cl_device_type dType =
-			(type == CPU) ? CL_DEVICE_TYPE_CPU : CL_DEVICE_TYPE_GPU;
+    bool isCpu = type == CPU;
+    cl_device_type dType =
+            (type == CPU) ? CL_DEVICE_TYPE_CPU : CL_DEVICE_TYPE_GPU;
 
-	// Get platform
-	cl_platform_id platform = NULL;
-	int retValue = getPlatform(platform, 0, false, verbose);
-	CHECK_ERROR(retValue, SUCCESS, "getPlatform() failed");
+    // Get platform
+    cl_platform_id platform = NULL;
+    int retValue = getPlatform(platform, 0, false, verbose);
+    CHECK_ERROR(retValue, SUCCESS, "getPlatform() failed");
 
-	// Display available devices.
-	if (verbose) {
-		retValue = displayDevices(platform, dType);
-		CHECK_ERROR(retValue, SUCCESS, "displayDevices() failed");
-	}
+    // Display available devices.
+    if (verbose) {
+        retValue = displayDevices(platform, dType);
+        CHECK_ERROR(retValue, SUCCESS, "displayDevices() failed");
+    }
 
-	// If we could find our platform, use it. Otherwise use just available platform.
-	cl_context_properties cps[3] = {
-	CL_CONTEXT_PLATFORM, (cl_context_properties) platform, 0 };
+    // If we could find our platform, use it. Otherwise use just available platform.
+    cl_context_properties cps[3] = {
+    CL_CONTEXT_PLATFORM, (cl_context_properties) platform, 0 };
 
-	cl_int status = 0;
-	context = clCreateContextFromType(cps, dType,
-	NULL,
-	NULL, &status);
-	CHECK_OPENCL_ERROR(status, "clCreateContextFromType failed.");
+    cl_int status = 0;
+    context = clCreateContextFromType(cps, dType,
+    NULL,
+    NULL, &status);
+    CHECK_OPENCL_ERROR(status, "clCreateContextFromType failed.");
 
-	cl_device_id *deviceIds = nullptr;
-	size_t numDevices;
-	status = getDevices(context, &deviceIds, &numDevices);
-	CHECK_ERROR(status, SUCCESS, "getDevices() failed");
+    cl_device_id *deviceIds = nullptr;
+    size_t numDevices;
+    status = getDevices(context, &deviceIds, &numDevices);
+    CHECK_ERROR(status, SUCCESS, "getDevices() failed");
 
-	size_t firstDevice = 0;
-	size_t lastDevicePlusOne = numDevices;
-	// force usage of single context if there is only one device
-	if (numDevices == 1) {
-		singleContext = true;
-	} else {
-		if (deviceId >= 0 && deviceId < numDevices) {
-			firstDevice = deviceId;
-			lastDevicePlusOne = firstDevice + 1;
-		}
-	}
+    size_t firstDevice = 0;
+    size_t lastDevicePlusOne = numDevices;
+    // force usage of single context if there is only one device
+    if (numDevices == 1) {
+        singleContext = true;
+    } else {
+        if (deviceId >= 0 && deviceId < numDevices) {
+            firstDevice = deviceId;
+            lastDevicePlusOne = firstDevice + 1;
+        }
+    }
 
-	for (auto i = firstDevice; i < lastDevicePlusOne; ++i) {
-		auto deviceContext = context;
-		// create unique context per device, if specified
-		if (!singleContext) {
-			deviceContext = clCreateContext(cps, 1, deviceIds + i,
-			NULL,
-			NULL, &status);
-			CHECK_OPENCL_ERROR(status, "clCreateContext failed.");
+    for (auto i = firstDevice; i < lastDevicePlusOne; ++i) {
+        auto deviceContext = context;
+        // create unique context per device, if specified
+        if (!singleContext) {
+            deviceContext = clCreateContext(cps, 1, deviceIds + i,
+            NULL,
+            NULL, &status);
+            CHECK_OPENCL_ERROR(status, "clCreateContext failed.");
 
-		}
-		DeviceInfo *deviceInfo = new DeviceInfo();
-		//Set device info of given cl_device_id
-		status = deviceInfo->setDeviceInfo(deviceIds[i]);
-		CHECK_ERROR(status, SUCCESS, "DeviceInfo::setDeviceInfo() failed");
-		char buildOption[4096] = "";
+        }
+        DeviceInfo *deviceInfo = new DeviceInfo();
+        //Set device info of given cl_device_id
+        status = deviceInfo->setDeviceInfo(deviceIds[i]);
+        CHECK_ERROR(status, SUCCESS, "DeviceInfo::setDeviceInfo() failed");
+        char buildOption[4096] = "";
 
-		bool isOCL2_x = deviceInfo->checkOpenCL2_XCompatibility();
-		if (deviceInfo->checkOpenCL2_XCompatibility()) {
-			if (deviceInfo->detectSVM()) {
-				strcat(buildOption, "-cl-std=CL2.0 ");
-			}
-		}
-		devices.push_back(
-				new DeviceOCL(deviceContext, !singleContext, deviceIds[i],
-						deviceInfo, new ArchAMD()));
-	}
-	// clean up all-devices context if we are not using single context
-	// for all devices
-	if (!singleContext) {
-		if (context) {
-			auto status = clReleaseContext(context);
-			CHECK_OPENCL_ERROR_NO_RETURN(status, "clReleaseContext failed.");
-			context = 0;
-		}
-	}
-	delete[] deviceIds;
-	return DeviceSuccess;
+        bool isOCL2_x = deviceInfo->checkOpenCL2_XCompatibility();
+        if (deviceInfo->checkOpenCL2_XCompatibility()) {
+            if (deviceInfo->detectSVM()) {
+                strcat(buildOption, "-cl-std=CL2.0 ");
+            }
+        }
+        devices.push_back(
+                new DeviceOCL(deviceContext, !singleContext, deviceIds[i],
+                        deviceInfo, new ArchAMD()));
+    }
+    // clean up all-devices context if we are not using single context
+    // for all devices
+    if (!singleContext) {
+        if (context) {
+            auto status = clReleaseContext(context);
+            CHECK_OPENCL_ERROR_NO_RETURN(status, "clReleaseContext failed.");
+            context = 0;
+        }
+    }
+    delete[] deviceIds;
+    return DeviceSuccess;
 }
 size_t DeviceManagerOCL::getNumDevices() {
-	return devices.size();
+    return devices.size();
 }
 }
 #endif

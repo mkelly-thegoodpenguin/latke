@@ -19,19 +19,24 @@
 
 #pragma once
 
-#include <cstddef>
-#include <string>
+#include "IArch.h"
 
 namespace ltk {
 
-class IArch {
+const cl_uint vendorIdINTL = 0x8086;
+
+class ArchINTL: public IArch {
 
 public:
-	virtual ~IArch() {
+	size_t getWaveFrontSize() {
+		return 128;
 	}
-	virtual size_t getWaveFrontSize()=0;
-	virtual cl_uint getVendorId() = 0;
-	virtual std::string getBuildOptions() = 0;
+	cl_uint getVendorId(){
+		return vendorIdINTL;
+	}
+  std::string getBuildOptions(){
+      return "";
+  }
 };
 
 }

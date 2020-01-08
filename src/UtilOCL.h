@@ -346,7 +346,7 @@ static int checkVal(T input, T reference, std::string message, bool isAPIerror =
 		return SUCCESS;
 	} else {
 		if (isAPIerror) {
-			std::cout << "Error: " << message << " Error code : ";
+			std::cout << "Error: " << message << ". Error code : ";
 			std::cout << getOpenCLErrorCodeStr(input) << std::endl;
 		} else {
 			error(message);
@@ -528,7 +528,7 @@ private:
 			return 0;
 		} else {
 			if (isAPIerror) {
-				std::cout << "Error: " << message << " Error code : ";
+				std::cout << "Error: " << message << ". Error code : ";
 				std::cout << getOpenCLErrorCodeStr(input) << std::endl;
 			} else {
 				std::cout << message;
