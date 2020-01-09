@@ -45,6 +45,8 @@ struct DeviceOCL {
 			DeviceInfo *deviceInfo, IArch *architecture);
 	~DeviceOCL();
 
+	std::string getBuildOptions();
+
 	bool ownsContext;
 	cl_context context;           // hold the context handler
 	cl_device_id device;            // hold the selected device handler

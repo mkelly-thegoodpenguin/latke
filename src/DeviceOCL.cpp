@@ -95,5 +95,11 @@ DeviceOCL::~DeviceOCL() {
 		CHECK_OPENCL_ERROR_NO_RETURN(status, "clReleaseContext failed.");
 	}
 }
+
+std::string DeviceOCL::getBuildOptions(){
+	return arch->getBuildOptions();
+}
+
+
 }
 #endif

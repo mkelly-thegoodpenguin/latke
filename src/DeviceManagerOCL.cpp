@@ -34,7 +34,7 @@
 #ifdef OPENCL_FOUND
 #include "DeviceManagerOCL.h"
 #include "UtilOCL.h"
-#include "ArchAMD.h"
+#include "ArchFactory.h"
 #include <cstring>
 
 namespace ltk {
@@ -134,21 +134,19 @@ int DeviceManagerOCL::init(eDeviceType type, int32_t deviceId, bool verbose) {
             CHECK_OPENCL_ERROR(status, "clCreateContext failed.");
 
         }
-        DeviceInfo *deviceInfo = new DeviceInfo();
         //Set device info of given cl_device_id
+        DeviceInfo *deviceInfo = new DeviceInfo();
         status = deviceInfo->setDeviceInfo(deviceIds[i]);
         CHECK_ERROR(status, SUCCESS, "DeviceInfo::setDeviceInfo() failed");
-        char buildOption[4096] = "";
-
-        bool isOCL2_x = deviceInfo->checkOpenCL2_XCompatibility();
-        if (deviceInfo->checkOpenCL2_XCompatibility()) {
-            if (deviceInfo->detectSVM()) {
-                strcat(buildOption, "-cl-std=CL2.0 ");
-            }
+        auto arch = ArchFactory::getArchitecture(deviceInfo->venderId);
+        if (!arch) {
+        	if (verbose)
+        		std::cout << "Unrecognized vendor id: " << deviceInfo->venderId << std::endl;
+        	continue;
         }
         devices.push_back(
                 new DeviceOCL(deviceContext, !singleContext, deviceIds[i],
-                        deviceInfo, new ArchAMD()));
+                        deviceInfo, arch));
     }
     // clean up all-devices context if we are not using single context
     // for all devices

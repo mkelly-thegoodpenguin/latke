@@ -120,6 +120,7 @@ void KernelOCL::generateBinary() {
 
 std::string KernelOCL::getBuildOptions() {
 	std::stringstream bldOptions;
+	bldOptions << initInfo.device->getBuildOptions();
 	if (initInfo.device->deviceInfo->checkOpenCL2_XCompatibility())
 		bldOptions << "-cl-std=CL2.0 -D OPENCL_2_X";
 	return bldOptions.str();
