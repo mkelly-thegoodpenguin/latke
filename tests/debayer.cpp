@@ -101,7 +101,13 @@ template<typename M, typename A> int Debayer<M, A>::debayer(int argc,
     BUILD_BINARY_IN_MEMORY);
     KernelInitInfo initInfo(initInfoBase, kernelFile, "debayer",
             "malvar_he_cutler_demosaic");
-    std::shared_ptr<KernelOCL> kernel = std::make_unique<KernelOCL>(initInfo);
+    std::shared_ptr<KernelOCL> kernel;
+    try {
+       kernel = std::make_unique<KernelOCL>(initInfo);
+    } catch (std::runtime_error &re){
+        std::cerr << "Unable to build kernel. Exiting" << std::endl;
+        return -1;
+    }
 
     A allocator(dev, bufferWidth, bufferHeight, 1);
     A allocatorOut(dev, bufferWidth, bufferHeight, 4);
