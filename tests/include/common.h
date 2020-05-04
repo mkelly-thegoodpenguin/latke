@@ -34,11 +34,8 @@
 #include <string>
 #include "ThreadPool.h"
 
-using namespace ltk;
 
-enum pattern_t {
-	RGGB = 0, GRBG = 1, GBRG = 2, BGGR = 3
-};
+using namespace ltk;
 
 template<typename M> struct JobInfo {
 	JobInfo(DeviceOCL *dev, std::shared_ptr<M> hostToDev,
@@ -60,13 +57,6 @@ template<typename M> struct JobInfo {
 	JobInfo *prev;
 };
 
-const uint32_t numBuffers = 16;
-const int numImages = 4;
-const int numBatches = numBuffers / numImages;
-const int numPostProcBuffers = 16;
-
-const int tile_rows = 5;
-const int tile_columns = 32;
 
 typedef void (CL_CALLBACK *pfn_event_notify)(cl_event event,
 		cl_int event_command_exec_status, void *user_data);
@@ -105,12 +95,4 @@ private:
 	size_t m_bps;
 };
 
-template<typename M, typename A> struct Debayer {
-	int debayer(int argc, char *argv[],
-			pfn_event_notify HostToDeviceMappedCallback,
-			pfn_event_notify DeviceToHostMappedCallback,
-			std::string kernelFile);
-	BlockingQueue<JobInfo<M>*> mappedHostToDeviceQueue;
-	BlockingQueue<JobInfo<M>*> mappedDeviceToHostQueue;
-};
 

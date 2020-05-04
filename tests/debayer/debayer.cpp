@@ -16,8 +16,31 @@
  * Free Software Foundation, Inc., 51 Franklin St, Fifth Floor,
  * Boston, MA 02110-1301, USA.
  */
+#pragma once
+#include "common.h"
 
-#include "debayer.h"
+// template struct to handle debayer to either image or buffer
+template<typename M, typename A> struct Debayer {
+	int debayer(int argc, char *argv[],
+			pfn_event_notify HostToDeviceMappedCallback,
+			pfn_event_notify DeviceToHostMappedCallback,
+			std::string kernelFile);
+	BlockingQueue<JobInfo<M>*> mappedHostToDeviceQueue;
+	BlockingQueue<JobInfo<M>*> mappedDeviceToHostQueue;
+};
+
+
+enum pattern_t {
+	RGGB = 0, GRBG = 1, GBRG = 2, BGGR = 3
+};
+
+const uint32_t numBuffers = 16;
+const int numImages = 4;
+const int numBatches = numBuffers / numImages;
+const int numPostProcBuffers = 16;
+
+const int tile_rows = 5;
+const int tile_columns = 32;
 
 template<typename M, typename A> int Debayer<M, A>::debayer(int argc,
         char *argv[], pfn_event_notify HostToDeviceMappedCallback,
