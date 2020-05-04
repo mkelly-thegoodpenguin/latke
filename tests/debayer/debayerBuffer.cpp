@@ -18,8 +18,7 @@
  */
 #include "debayer.cpp"
 
-
-Debayer<DualBufferOCL,BufferAllocater> debayer;
+Debayer<DualBufferOCL, BufferAllocater> debayer;
 
 void CL_CALLBACK HostToDeviceMappedCallback(cl_event event,
 		cl_int cmd_exec_status, void *user_data) {
@@ -44,8 +43,7 @@ void CL_CALLBACK DeviceToHostMappedCallback(cl_event event,
 }
 
 int main(int argc, char *argv[]) {
-	return debayer.debayer(argc,argv,
-			(pfn_event_notify)HostToDeviceMappedCallback,
-			(pfn_event_notify)DeviceToHostMappedCallback,
-			"debayerBuffer.cl");
+	return debayer.debayer(argc, argv,
+			(pfn_event_notify) HostToDeviceMappedCallback,
+			(pfn_event_notify) DeviceToHostMappedCallback, "debayerBuffer.cl");
 }

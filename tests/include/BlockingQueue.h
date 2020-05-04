@@ -17,18 +17,17 @@
  * Boston, MA 02110-1301, USA.
  */
 
-
 #pragma once
 
 #include <mutex>
 #include <condition_variable>
 #include <queue>
 
-
-template<typename Data> class BlockingQueue
-{
+template<typename Data> class BlockingQueue {
 public:
-	BlockingQueue() : _active(true) {}
+	BlockingQueue() :
+			_active(true) {
+	}
 	// deactivate and clear queue
 	void deactivate() {
 		std::lock_guard<std::mutex> lk(_mutex);
@@ -42,26 +41,26 @@ public:
 		std::lock_guard<std::mutex> lk(_mutex);
 		_active = true;
 	}
-	void push(Data const& data)	{
+	void push(Data const &data) {
 		std::lock_guard<std::mutex> lk(_mutex);
 		if (!_active)
 			return;
 		_queue.push(data);
 		_condition.notify_one();
 	}
-	bool tryPop(Data& value)	{
+	bool tryPop(Data &value) {
 		std::lock_guard<std::mutex> lk(_mutex);
 		return pop(value);
 	}
-	bool waitAndPop(Data& value)	{
+	bool waitAndPop(Data &value) {
 		std::unique_lock<std::mutex> lk(_mutex);
 		// in case of spurious wakeup, loop until predicate in lambda
 		// is satisfied.
-		_condition.wait(lk, [this]{ return !_active || !_queue.empty(); });
+		_condition.wait(lk, [this] {return !_active || !_queue.empty();});
 		return pop(value);
 	}
 private:
-	bool pop(Data& value) {
+	bool pop(Data &value) {
 		if (_queue.empty())
 			return false;
 		value = _queue.front();
