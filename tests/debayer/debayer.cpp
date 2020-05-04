@@ -132,8 +132,8 @@ template<typename M, typename A> int Debayer<M, A>::debayer(int argc,
         return -1;
     }
 
-    A allocator(dev, bufferWidth, bufferHeight, 1);
-    A allocatorOut(dev, bufferWidth, bufferHeight, 4);
+    A allocator(dev, bufferWidth, bufferHeight, 1, CL_UNSIGNED_INT8);
+    A allocatorOut(dev, bufferWidth, bufferHeight, 4, CL_UNSIGNED_INT8);
     for (int i = 0; i < numImages; ++i) {
 
         hostToDevice[i] = allocator.allocate(true);

@@ -63,9 +63,10 @@ typedef void (CL_CALLBACK *pfn_event_notify)(cl_event event,
 
 class BufferAllocater {
 public:
-	BufferAllocater(DeviceOCL *dev, size_t dimX, size_t dimY, size_t bps) :
-			m_dev(dev), m_dimX(dimX), m_dimY(dimY), m_bps(bps) {
-
+	BufferAllocater(DeviceOCL *dev, size_t dimX, size_t dimY, size_t bps, uint32_t data_type) :
+			m_dev(dev), m_dimX(dimX), m_dimY(dimY), m_bps(bps)
+	{
+		(void)data_type;
 	}
 	std::unique_ptr<DualBufferOCL> allocate(bool hostToDevice) {
 		return std::make_unique<DualBufferOCL>(m_dev, m_dimX * m_dimY * m_bps,
@@ -80,19 +81,23 @@ private:
 
 class ImageAllocater {
 public:
-	ImageAllocater(DeviceOCL *dev, size_t dimX, size_t dimY, size_t bps) :
-			m_dev(dev), m_dimX(dimX), m_dimY(dimY), m_bps(bps) {
-
-	}
+	ImageAllocater(DeviceOCL *dev, size_t dimX, size_t dimY, size_t bps, uint32_t data_type) :
+			m_dev(dev),
+			m_dimX(dimX),
+			m_dimY(dimY),
+			m_bps(bps),
+			m_data_type(data_type)
+    {}
 	std::unique_ptr<DualImageOCL> allocate(bool hostToDevice) {
 		return std::make_unique<DualImageOCL>(m_dev, m_dimX, m_dimY,
-				(m_bps == 1 ? CL_R : CL_RGBA), CL_UNSIGNED_INT8, hostToDevice);
+				(m_bps == 1 ? CL_R : CL_RGBA), m_data_type , hostToDevice);
 	}
 private:
 	DeviceOCL *m_dev;
 	size_t m_dimX;
 	size_t m_dimY;
 	size_t m_bps;
+	uint32_t m_data_type;
 };
 
 
