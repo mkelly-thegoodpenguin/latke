@@ -7,10 +7,20 @@ efficient batch image processing with OpenCL.
 
 ## Tests
 
+### Debayer
+
 The test binaries `debayer_buffer` and `debayer_image` convert a Bayer mosaic raw image to RGB(A),
-using either OpenCL buffers or OpenCL images. To run the programs, pass in the file name
-of the raw file, and optionaly the bayer pattern. RGGB is the default pattern.
-A test file can be found in the `test_data` folder.
+using either OpenCL buffers or OpenCL images. 
+
+To run the programs, pass in the file name of the raw file, and optionally the bayer pattern from
+
+`{RGGB,GRBG,GBRG,BGGR} `
+
+`RGGB` is the default pattern. A test raw file can be found in the `test_data` folder.
+
+Example:
+
+`$ debayer_buffer FOO.png BGGR`
 
 Note: the opencl kernel '.cl' files must be compiled at runtime to create the kernel binaries, so the test binary
 must have access to these files. These `.cl` files are copied to the build folder, so the test binary

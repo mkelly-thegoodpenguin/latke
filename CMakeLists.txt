@@ -1,4 +1,4 @@
-cmake_minimum_required (VERSION 3.7)
+cmake_minimum_required (VERSION 3.12)
 project (latke)
 
 set(CMAKE_CXX_STANDARD 14)
@@ -9,7 +9,7 @@ find_package(Threads REQUIRED)
 set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
 
 find_package(OpenCL REQUIRED)
-include_directories(${OPENCL_INCLUDE_DIRS} src)
+include_directories(${OPENCL_INCLUDE_DIRS} src tests/include)
 
 # Install directories
 include(GNUInstallDirs)
@@ -51,8 +51,10 @@ add_library(latke STATIC
  @ONLY
  )
 
+# tests
+
 # Gather list of all cl files
-file(GLOB CLFiles ${CMAKE_CURRENT_SOURCE_DIR}/tests/*.cl 
+file(GLOB CLFiles ${CMAKE_CURRENT_SOURCE_DIR}/tests/debayer/*.cl 
                   ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cl 
                   ${CMAKE_CURRENT_SOURCE_DIR}/src/latke_config.h )
 
@@ -62,10 +64,8 @@ foreach(CLFile ${CLFiles})
                          copy_if_different  ${CLFile}  $<TARGET_FILE_DIR:latke> )
 endforeach()
 
-# tests
-
-add_executable(debayer_buffer tests/debayerBuffer.cpp)
+add_executable(debayer_buffer tests/debayer/debayerBuffer.cpp)
 target_link_libraries(debayer_buffer latke ${OPENCL_LIBRARIES} Threads::Threads)
 
-add_executable(debayer_image tests/debayerImage.cpp)
+add_executable(debayer_image tests/debayer/debayerImage.cpp)
 target_link_libraries(debayer_image latke ${OPENCL_LIBRARIES} Threads::Threads)
