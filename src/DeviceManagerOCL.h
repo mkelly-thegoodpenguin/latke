@@ -48,7 +48,6 @@ class DeviceManagerOCL {
 public:
 	DeviceManagerOCL(bool singleCtxt);
 	~DeviceManagerOCL(void);
-	int init(int32_t platformId, int32_t deviceNumber, bool verbose);
 	int init(int32_t platformId, eDeviceType type, int32_t deviceNumber, bool verbose);
 
 	DeviceOCL* getDevice(size_t deviceNumber);

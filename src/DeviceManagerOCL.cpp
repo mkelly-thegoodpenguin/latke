@@ -66,21 +66,6 @@ DeviceOCL* DeviceManagerOCL::getDevice(size_t deviceNumber) {
     return devices[deviceNumber];
 }
 
-int DeviceManagerOCL::init(int32_t platformId, int32_t deviceNumber, bool verbose) {
-    eDeviceType firstTry =
-            (deviceNumber >= 0 || deviceNumber == ALL_GPU_DEVICES) ? GPU : CPU;
-    if (verbose)
-        std::cout << "Initializing " << ((firstTry == GPU) ? "GPU." : "CPU.")
-                << std::endl;
-    int rc = init(platformId, firstTry, deviceNumber, verbose);
-    if (rc != DeviceSuccess && firstTry != CPU) {
-        if (verbose)
-            std::cout << "Initializing " << "CPU." << std::endl;
-        rc = init(platformId, CPU, deviceNumber, verbose);
-    }
-    return rc;
-}
-
 int DeviceManagerOCL::init(int32_t platformId, eDeviceType type, int32_t deviceNumber, bool verbose) {
     bool isCpu = type == CPU;
     cl_device_type dType;
@@ -113,7 +98,7 @@ int DeviceManagerOCL::init(int32_t platformId, eDeviceType type, int32_t deviceN
         CHECK_ERROR(retValue, SUCCESS, "displayDevices() failed");
     }
 
-    // If we could find our platform, use it. Otherwise use just available platform.
+    // If we can our platform, use it. Otherwise just use available platform.
     cl_context_properties cps[3] = {
     CL_CONTEXT_PLATFORM, (cl_context_properties) platform, 0 };
 
