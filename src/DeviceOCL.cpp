@@ -55,20 +55,26 @@ DeviceOCL::DeviceOCL(cl_context my_context, bool ownsCtxt,
 
 	cl_int status = 0;
 #ifdef CL_VERSION_2_0
-	// Create command queue
-	cl_queue_properties prop[] = { 0 };
-	commandQueue = clCreateCommandQueueWithProperties(context, device, prop,
-			&status);
-	CHECK_OPENCL_ERROR_NO_RETURN(status,
-			"clCreateCommandQueueWithProperties failed.");
-#else
-	queue = clCreateCommandQueue(context,
-		arg->device,
-		0,
-		NULL);
-	CHECK_OPENCL_ERROR_NO_RETURN(status, "clCreateCommandQueue failed.");
+	if (deviceInfo->checkOpenCL2_XCompatibility()) {
+		// Create command queue
+		cl_queue_properties prop[] = { 0 };
+		commandQueue = clCreateCommandQueueWithProperties(context, device, prop,
+				&status);
+		CHECK_OPENCL_ERROR_NO_RETURN(status,
+				"clCreateCommandQueueWithProperties failed.");
+	}
 #endif
-	// todo: throw exception if create command queue failed
+
+	if (!commandQueue){
+		commandQueue = clCreateCommandQueue(context,
+			device,
+			0,
+			NULL);
+		CHECK_OPENCL_ERROR_NO_RETURN(status, "clCreateCommandQueue failed.");
+	}
+
+	if (!commandQueue)
+		throw std::exception();
 }
 
 DeviceOCL::~DeviceOCL() {
