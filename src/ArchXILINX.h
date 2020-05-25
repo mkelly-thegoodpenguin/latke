@@ -19,18 +19,24 @@
 
 #pragma once
 
-#include "CL/cl.h"
 #include "IArch.h"
-#include "ArchAMD.h"
-#include "ArchNVD.h"
-#include "ArchINTL.h"
-#include "ArchXILINX.h"
 
 namespace ltk {
 
-class ArchFactory {
+const cl_uint vendorIdXILINX = 0x0;
+
+class ArchXILINX: public IArch {
+
 public:
-	static IArch* getArchitecture(cl_uint vendorId);
+	size_t getWaveFrontSize() {
+		return 1;
+	}
+	cl_uint getVendorId(){
+		return vendorIdXILINX;
+	}
+  std::string getBuildOptions(){
+      return "";
+  }
 };
 
 }
