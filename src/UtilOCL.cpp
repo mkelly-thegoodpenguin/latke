@@ -288,26 +288,23 @@ int getPlatformL(cl_platform_id &platform, int platformId,
             bool platformFound = false;
 
             switch (dType) {
-            case CL_DEVICE_TYPE_GPU: {
-                //first find platform having GPU
-                platformFound = getDefaultPlatform(numPlatforms,
-                        platforms.get(), platform, dType, verbose);
-                if (platformFound) {
-                    break;
-                }
-
-            }/*end of gpu case*/
-
-            case CL_DEVICE_TYPE_CPU: {
-                //if there is no GPU found,
-                //then find platform having CPU
-                if (!platformFound) {
-                    platformFound = getDefaultPlatform(numPlatforms,
-                            platforms.get(), platform, dType, verbose);
-                }
-            } /*end of CPU case*/
-
-            }/*end of switch statement*/
+				case CL_DEVICE_TYPE_GPU:
+				case CL_DEVICE_TYPE_ACCELERATOR:
+					//first find platform having GPU
+					platformFound = getDefaultPlatform(numPlatforms,
+							platforms.get(), platform, dType, verbose);
+					if (platformFound)
+						break;
+					//fall-through
+				default:
+					//if there is no GPU/ACCELERATOR found,
+					//then find platform having CPU
+					if (!platformFound) {
+						platformFound = getDefaultPlatform(numPlatforms,
+								platforms.get(), platform, dType, verbose);
+					}
+					break;
+           }
         }
     }
     if (NULL == platform) {

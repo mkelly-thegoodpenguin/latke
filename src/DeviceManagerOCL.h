@@ -41,17 +41,17 @@
 namespace ltk {
 
 enum eDeviceType {
-	CPU, GPU, NUM_DEVICE_TYPES
+	DEFAULT,CPU, GPU, ACCELERATOR,CUSTOM, NUM_DEVICE_TYPES
 };
 
 class DeviceManagerOCL {
 public:
 	DeviceManagerOCL(bool singleCtxt);
 	~DeviceManagerOCL(void);
-	int init(int32_t deviceId, bool verbose);
-	int init(eDeviceType type, int32_t deviceId, bool verbose);
+	int init(int32_t platformId, int32_t deviceNumber, bool verbose);
+	int init(int32_t platformId, eDeviceType type, int32_t deviceNumber, bool verbose);
 
-	DeviceOCL* getDevice(size_t deviceId);
+	DeviceOCL* getDevice(size_t deviceNumber);
 	size_t getNumDevices();
 private:
 	bool singleContext;

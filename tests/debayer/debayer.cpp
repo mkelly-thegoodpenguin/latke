@@ -73,6 +73,10 @@ template<typename M, typename A> int Debayer<M, A>::debayer(int argc,
 
 	}
 
+	const int platformId = 1;
+	const eDeviceType deviceType = ACCELERATOR;
+	const int deviceId = 0;
+
 	uint32_t bps_out = 4;
 	uint32_t bufferPitch = bufferWidth;
 	uint32_t frameSize = bufferPitch * bufferHeight;
@@ -87,13 +91,13 @@ template<typename M, typename A> int Debayer<M, A>::debayer(int argc,
 
 	// 1. create device manager
 	auto deviceManager = std::make_shared<DeviceManagerOCL>(true);
-	auto rc = deviceManager->init(0, true);
+	auto rc = deviceManager->init(platformId, deviceType, deviceId, true);
 	if (rc != DeviceSuccess) {
 		std::cerr << "Failed to initialize OpenCL device";
 		return -1;
 	}
 
-	auto dev = deviceManager->getDevice(0);
+	auto dev = deviceManager->getDevice(deviceId);
 
 	auto arch = ArchFactory::getArchitecture(dev->deviceInfo->venderId);
 
@@ -108,12 +112,18 @@ template<typename M, typename A> int Debayer<M, A>::debayer(int argc,
 	buildOptions << " -D TILE_ROWS=" << tile_rows;
 	buildOptions << " -D TILE_COLS=" << tile_columns;
 	switch (arch->getVendorId()) {
-	case vendorIdAMD:
-		buildOptions << " -D AMD_GPU_ARCH";
-		break;
-	case vendorIdNVD:
-		buildOptions << " -D NVIDIA_ARCH";
-		break;
+		case vendorIdAMD:
+			buildOptions << " -D AMD_GPU_ARCH";
+			break;
+		case vendorIdNVD:
+			buildOptions << " -D NVIDIA_ARCH";
+			break;
+		case vendorIdXILINX:
+			buildOptions << " -D AMD_GPU_ARCH";
+			break;
+		default:
+			return -1;
+
 	}
 	buildOptions << " -D OUTPUT_CHANNELS=" << bps_out;
 	buildOptions << arch->getBuildOptions();

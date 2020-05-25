@@ -60,35 +60,51 @@ DeviceManagerOCL::~DeviceManagerOCL(void) {
     }
 }
 
-DeviceOCL* DeviceManagerOCL::getDevice(size_t deviceId) {
-    if (deviceId >= devices.size())
+DeviceOCL* DeviceManagerOCL::getDevice(size_t deviceNumber) {
+    if (deviceNumber >= devices.size())
         return nullptr;
-    return devices[deviceId];
+    return devices[deviceNumber];
 }
 
-int DeviceManagerOCL::init(int32_t deviceId, bool verbose) {
+int DeviceManagerOCL::init(int32_t platformId, int32_t deviceNumber, bool verbose) {
     eDeviceType firstTry =
-            (deviceId >= 0 || deviceId == ALL_GPU_DEVICES) ? GPU : CPU;
+            (deviceNumber >= 0 || deviceNumber == ALL_GPU_DEVICES) ? GPU : CPU;
     if (verbose)
         std::cout << "Initializing " << ((firstTry == GPU) ? "GPU." : "CPU.")
                 << std::endl;
-    int rc = init(firstTry, deviceId, verbose);
+    int rc = init(platformId, firstTry, deviceNumber, verbose);
     if (rc != DeviceSuccess && firstTry != CPU) {
         if (verbose)
             std::cout << "Initializing " << "CPU." << std::endl;
-        rc = init(CPU, deviceId, verbose);
+        rc = init(platformId, CPU, deviceNumber, verbose);
     }
     return rc;
 }
 
-int DeviceManagerOCL::init(eDeviceType type, int32_t deviceId, bool verbose) {
+int DeviceManagerOCL::init(int32_t platformId, eDeviceType type, int32_t deviceNumber, bool verbose) {
     bool isCpu = type == CPU;
-    cl_device_type dType =
-            (type == CPU) ? CL_DEVICE_TYPE_CPU : CL_DEVICE_TYPE_GPU;
+    cl_device_type dType;
+    switch(type){
+		case CPU:
+			dType = CL_DEVICE_TYPE_CPU;
+			break;
+		case GPU:
+			dType = CL_DEVICE_TYPE_GPU;
+			break;
+		case ACCELERATOR:
+			dType = CL_DEVICE_TYPE_ACCELERATOR;
+			break;
+		case CUSTOM:
+			dType = CL_DEVICE_TYPE_CUSTOM;
+			break;
+		default:
+			dType = CL_DEVICE_TYPE_DEFAULT;
+			break;
+    }
 
     // Get platform
     cl_platform_id platform = NULL;
-    int retValue = getPlatform(platform, 0, false, verbose);
+    int retValue = getPlatform(platform, platformId, false, verbose);
     CHECK_ERROR(retValue, SUCCESS, "getPlatform() failed");
 
     // Display available devices.
@@ -118,8 +134,8 @@ int DeviceManagerOCL::init(eDeviceType type, int32_t deviceId, bool verbose) {
     if (numDevices == 1) {
         singleContext = true;
     } else {
-        if (deviceId >= 0 && deviceId < numDevices) {
-            firstDevice = deviceId;
+        if (deviceNumber >= 0 && deviceNumber < numDevices) {
+            firstDevice = deviceNumber;
             lastDevicePlusOne = firstDevice + 1;
         }
     }
