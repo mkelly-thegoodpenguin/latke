@@ -41,6 +41,10 @@ const int numPostProcBuffers = 16;
 const int tile_rows = 5;
 const int tile_columns = 32;
 
+const int platformId = 0;
+const eDeviceType deviceType = CPU;
+const int deviceId = 0;
+
 template<typename M, typename A> int Debayer<M, A>::debayer(int argc,
 		char *argv[], pfn_event_notify HostToDeviceMappedCallback,
 		pfn_event_notify DeviceToHostMappedCallback, std::string kernelFile) {
@@ -73,10 +77,6 @@ template<typename M, typename A> int Debayer<M, A>::debayer(int argc,
 
 	}
 
-	const int platformId = 1;
-	const eDeviceType deviceType = ACCELERATOR;
-	const int deviceId = 0;
-
 	uint32_t bps_out = 4;
 	uint32_t bufferPitch = bufferWidth;
 	uint32_t frameSize = bufferPitch * bufferHeight;
@@ -100,6 +100,10 @@ template<typename M, typename A> int Debayer<M, A>::debayer(int argc,
 	auto dev = deviceManager->getDevice(deviceId);
 
 	auto arch = ArchFactory::getArchitecture(dev->deviceInfo->venderId);
+	if (!arch){
+	    std::cerr << "Unsupported OpenCL vendor ID " << dev->deviceInfo->venderId;
+	    return -1;
+	}
 
 	std::shared_ptr<M> hostToDevice[numImages];
 	std::shared_ptr<M> deviceToHost[numImages];
@@ -119,8 +123,11 @@ template<typename M, typename A> int Debayer<M, A>::debayer(int argc,
 			buildOptions << " -D NVIDIA_ARCH";
 			break;
 		case vendorIdXILINX:
-			buildOptions << " -D AMD_GPU_ARCH";
+			buildOptions << "";
 			break;
+    case vendorIdINTL:
+      buildOptions << "";
+      break;
 		default:
 			return -1;
 
