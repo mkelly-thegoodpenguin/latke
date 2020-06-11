@@ -29,10 +29,10 @@
 
 namespace ltk {
 
-#define LOAD_BINARY							0
-#define BUILD_BINARY_IN_MEMORY				1
-#define BUILD_BINARY_OFFLINE				2
-#define BUILD_BINARY_OFFLINE_ALL_DEVICES	4
+const uint32_t LOAD_BINARY = 0;
+const uint32_t BUILD_BINARY_IN_MEMORY =	1;
+const uint32_t BUILD_BINARY_OFFLINE	= 2;
+const uint32_t BUILD_BINARY_OFFLINE_ALL_DEVICES	= 4;
 
 
 struct KernelInitInfoBase {

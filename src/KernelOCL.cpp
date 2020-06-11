@@ -35,7 +35,7 @@ KernelOCL::KernelOCL(KernelInitInfo init) :
 	bool verbose = initInfo.binaryBuildMethod != LOAD_BINARY;
 	cl_program program = 0;
 	buildProgramData data = getProgramData();
-	if (!initInfo.binaryBuildMethod) {
+	if (initInfo.binaryBuildMethod == LOAD_BINARY ) {
 		program = loadBinary(verbose);
 	} else {
 		data.binaryName = "";

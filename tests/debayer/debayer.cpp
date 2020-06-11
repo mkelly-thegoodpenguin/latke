@@ -42,8 +42,8 @@ const int tile_rows = 5;
 const int tile_columns = 32;
 
 const int platformId = 0;
-const eDeviceType deviceType = CPU;
-const int deviceId = 0;
+const eDeviceType deviceType = GPU;
+const int deviceNum = 0;
 
 template<typename M, typename A> int Debayer<M, A>::debayer(int argc,
 		char *argv[], pfn_event_notify HostToDeviceMappedCallback,
@@ -91,13 +91,13 @@ template<typename M, typename A> int Debayer<M, A>::debayer(int argc,
 
 	// 1. create device manager
 	auto deviceManager = std::make_shared<DeviceManagerOCL>(true);
-	auto rc = deviceManager->init(platformId, deviceType, deviceId, true);
+	auto rc = deviceManager->init(platformId, deviceType, deviceNum, true);
 	if (rc != DeviceSuccess) {
 		std::cerr << "Failed to initialize OpenCL device";
 		return -1;
 	}
 
-	auto dev = deviceManager->getDevice(deviceId);
+	auto dev = deviceManager->getDevice(deviceNum);
 
 	auto arch = ArchFactory::getArchitecture(dev->deviceInfo->venderId);
 	if (!arch){
