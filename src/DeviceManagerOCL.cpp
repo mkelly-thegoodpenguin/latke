@@ -39,13 +39,6 @@
 
 namespace ltk {
 
-// deviceId in {0,1,2.....} specifies that single GPU device with this id should be used by plugin
-// deviceId == ALL_GPU_DEVICES specifies that all GPU devices should be used by plugin
-// deviceId == FALLBACK_TO_HOST specifies that plugin is not used
-
-const int32_t ALL_GPU_DEVICES = -1;
-const int32_t FALLBACK_TO_HOST = -2;
-
 DeviceManagerOCL::DeviceManagerOCL(bool singleCtxt) :
         singleContext(singleCtxt), context(0) {
 }
