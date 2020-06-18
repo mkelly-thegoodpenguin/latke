@@ -60,9 +60,11 @@ DeviceOCL* DeviceManagerOCL::getDevice(size_t deviceNumber) {
 }
 
 int DeviceManagerOCL::init(int32_t platformId, eDeviceType type, int32_t deviceNumber, bool verbose) {
-    bool isCpu = type == CPU;
     cl_device_type dType;
     switch(type){
+        case DEFAULT:
+        	dType = CL_DEVICE_TYPE_DEFAULT;
+        	break;
 		case CPU:
 			dType = CL_DEVICE_TYPE_CPU;
 			break;
@@ -76,7 +78,7 @@ int DeviceManagerOCL::init(int32_t platformId, eDeviceType type, int32_t deviceN
 			dType = CL_DEVICE_TYPE_CUSTOM;
 			break;
 		default:
-			dType = CL_DEVICE_TYPE_DEFAULT;
+			return FAILURE;
 			break;
     }
 
