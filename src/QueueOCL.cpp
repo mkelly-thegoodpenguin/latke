@@ -38,23 +38,25 @@ QueueOCL::QueueOCL(DeviceOCL *device) :
 
 #ifdef CL_VERSION_2_0
 	// Create command queue
-	cl_queue_properties prop[] = { 0 };
-	queue = clCreateCommandQueueWithProperties(device->context, device->device,
-			prop, &errorCode);
-	if (errorCode != CL_SUCCESS) {
-		Util::LogError(
-				"Error: clCreateCommandQueueWithProperties() returned %s.\n",
-				Util::TranslateOpenCLError(errorCode));
+	if (device->deviceInfo->checkOpenCL2_XCompatibility()) {
+		cl_queue_properties prop[] = { 0 };
+		queue = clCreateCommandQueueWithProperties(device->context, device->device,
+				prop, &errorCode);
+		if (errorCode != CL_SUCCESS)
+			Util::LogError(
+					"Error: clCreateCommandQueueWithProperties() returned %s.\n",
+					Util::TranslateOpenCLError(errorCode));
 	}
 
-#else
-	cl_command_queue_properties properties = CL_QUEUE_PROFILING_ENABLE;
-	queue = clCreateCommandQueue(device->context, device->device, properties, &errorCode);
-	if (errorCode != CL_SUCCESS)
-	{
-		Util::LogError("Error: clCreateCommandQueue() returned %s.\n", Util::TranslateOpenCLError(errorCode));
-	}
 #endif
+	if (!queue) {
+		cl_command_queue_properties properties = CL_QUEUE_PROFILING_ENABLE;
+		queue = clCreateCommandQueue(device->context, device->device, properties, &errorCode);
+		if (errorCode != CL_SUCCESS)
+			Util::LogError("Error: clCreateCommandQueue() returned %s.\n", Util::TranslateOpenCLError(errorCode));
+	}
+	if (!queue)
+		throw std::runtime_error("Failed to create command queue");
 }
 
 QueueOCL::~QueueOCL(void) {
