@@ -19,6 +19,8 @@
 
 #pragma once
 
+#include <vector>
+
 #ifdef OPENCL_FOUND
 #include "platform.h"
 
@@ -30,7 +32,7 @@ class QueueOCL
 public:
     QueueOCL(QueueOCL& rhs);
     QueueOCL(cl_command_queue cmdQueue);
-    QueueOCL(DeviceOCL* device);
+    QueueOCL(DeviceOCL* device, std::vector<uint64_t> queue_props);
     ~QueueOCL(void);
     tDeviceRC finish();
     tDeviceRC flush();

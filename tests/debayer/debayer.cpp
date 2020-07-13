@@ -147,14 +147,15 @@ template<typename M, typename A> int Debayer<M, A>::debayer(int argc,
 		std::cerr << "Unable to build kernel. Exiting" << std::endl;
 		return -1;
 	}
+  std::vector<uint64_t> queue_props{0, CL_QUEUE_OUT_OF_ORDER_EXEC_MODE_ENABLE,0, 0};
 
-	A allocator(dev, bufferWidth, bufferHeight, 1, CL_UNSIGNED_INT8);
-	A allocatorOut(dev, bufferWidth, bufferHeight, 4, CL_UNSIGNED_INT8);
+	A allocator(dev, bufferWidth, bufferHeight, 1, CL_UNSIGNED_INT8, queue_props);
+	A allocatorOut(dev, bufferWidth, bufferHeight, 4, CL_UNSIGNED_INT8, queue_props);
 	for (int i = 0; i < numImages; ++i) {
 
 		hostToDevice[i] = allocator.allocate(true);
 		deviceToHost[i] = allocatorOut.allocate(false);
-		kernelQueue[i] = std::make_unique<QueueOCL>(dev);
+		kernelQueue[i] = std::make_unique<QueueOCL>(dev,queue_props);
 		currentJobInfo[i] = nullptr;
 		prevJobInfo[i] = nullptr;
 	}

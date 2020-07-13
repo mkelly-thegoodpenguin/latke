@@ -28,7 +28,7 @@ namespace ltk {
 class DualBufferOCL: public IDualMemOCL {
 
 public:
-	DualBufferOCL(DeviceOCL *device, size_t len, bool hostToDevice);
+	DualBufferOCL(DeviceOCL *device, size_t len, bool hostToDevice, std::vector<uint64_t> queue_props);
 	~DualBufferOCL();
 
 	bool map(cl_uint num_events_in_wait_list, const cl_event *event_wait_list,

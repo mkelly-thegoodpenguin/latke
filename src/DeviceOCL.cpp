@@ -84,14 +84,14 @@ DeviceOCL::~DeviceOCL() {
 	if (commandQueue) {
 		errorCode = clReleaseCommandQueue(commandQueue);
 		if (errorCode != CL_SUCCESS) {
-			Util::LogError("Error: clCreateCommandQueue() returned %s.\n",
+			Util::LogError("Error: clReleaseCommandQueue() returned %s.\n",
 					Util::TranslateOpenCLError(errorCode));
 		}
 	}
 	if (device) {
 		errorCode = clReleaseDevice(device);
 		if (errorCode != CL_SUCCESS) {
-			Util::LogError("Error: clCreateCommandQueue() returned %s.\n",
+			Util::LogError("Error: clReleaseCommandQueue() returned %s.\n",
 					Util::TranslateOpenCLError(errorCode));
 		}
 	}

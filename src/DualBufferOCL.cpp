@@ -22,13 +22,15 @@
 #include "DualBufferOCL.h"
 #include "UtilOCL.h"
 
+
 namespace ltk {
 
-DualBufferOCL::DualBufferOCL(DeviceOCL *device, size_t len, bool doHostToDevice) :
-		hostToDevice(doHostToDevice), queue(new QueueOCL(device)), hostBuffer(
-				nullptr), deviceBuffer(0), numBytes(len)
-
-{
+DualBufferOCL::DualBufferOCL(DeviceOCL *device, size_t len, bool doHostToDevice, std::vector<uint64_t> queue_props) :
+		hostToDevice(doHostToDevice),
+		queue(new QueueOCL(device, queue_props)),
+		hostBuffer(nullptr),
+		deviceBuffer(0),
+		numBytes(len){
 	if (numBytes == 0)
 		throw std::exception();
 	cl_mem_flags flags = CL_MEM_ALLOC_HOST_PTR;

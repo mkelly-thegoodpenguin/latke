@@ -30,7 +30,7 @@ class DualImageOCL: public IDualMemOCL {
 
 public:
 	DualImageOCL(DeviceOCL *device, size_t dimX, size_t dimY,
-			uint32_t channelOrder, uint32_t dataType, bool hostToDevice);
+			uint32_t channelOrder, uint32_t dataType, bool hostToDevice, std::vector<uint64_t> queue_props);
 	~DualImageOCL();
 
 	bool map(cl_uint num_events_in_wait_list, const cl_event *event_wait_list,

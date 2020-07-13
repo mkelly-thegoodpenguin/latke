@@ -6,6 +6,9 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 find_package(Threads REQUIRED)
 
+add_definitions(-DCL_TARGET_OPENCL_VERSION=220)
+add_definitions(-DCL_USE_DEPRECATED_OPENCL_1_2_APIS=1)
+
 set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
 
 find_package(OpenCL REQUIRED)

@@ -24,10 +24,14 @@
 
 namespace ltk {
 DualImageOCL::DualImageOCL(DeviceOCL *device, size_t dimX, size_t dimY,
-		uint32_t channelOrder, uint32_t dataType, bool doHostToDevice) :
-		hostToDevice(doHostToDevice), queue(new QueueOCL(device)), hostBuffer(
-				nullptr), image(0), dimX(dimX), dimY(dimY), channelOrder(
-				channelOrder), dataType(dataType) {
+		uint32_t channelOrder, uint32_t dataType, bool doHostToDevice, std::vector<uint64_t> queue_props) :
+		    hostToDevice(doHostToDevice), queue(new QueueOCL(device, queue_props)),
+		    hostBuffer(nullptr),
+		    image(0),
+		    dimX(dimX),
+		    dimY(dimY),
+		    channelOrder(channelOrder),
+		    dataType(dataType) {
 	if (dimX == 0 && dimY == 0)
 		throw std::exception();
 
