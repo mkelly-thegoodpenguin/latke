@@ -49,32 +49,41 @@
 namespace ltk {
 
 DeviceOCL::DeviceOCL(cl_context my_context, bool ownsCtxt,
-		cl_device_id my_device, DeviceInfo *deviceInfo, IArch *architecture) :
-		ownsContext(ownsCtxt), context(my_context), device(my_device), commandQueue(
-		NULL), deviceInfo(deviceInfo), arch(architecture) {
+		cl_device_id my_device, DeviceInfo *deviceInfo, IArch *architecture, std::vector<uint64_t> queue_props) :
+		ownsContext(ownsCtxt),
+		context(my_context),
+		device(my_device),
+		commandQueue(NULL),
+		deviceInfo(deviceInfo),
+		arch(architecture) {
 
-	cl_int status = 0;
-#ifdef CL_VERSION_2_0
-	if (deviceInfo->checkOpenCL2_XCompatibility()) {
-		// Create command queue
-		cl_queue_properties prop[] = { 0 };
-		commandQueue = clCreateCommandQueueWithProperties(context, device, prop,
-				&status);
-		CHECK_OPENCL_ERROR_NO_RETURN(status,
-				"clCreateCommandQueueWithProperties failed.");
-	}
-#endif
+    cl_int errorCode;
 
-	if (!commandQueue){
-		commandQueue = clCreateCommandQueue(context,
-			device,
-			0,
-			NULL);
-		CHECK_OPENCL_ERROR_NO_RETURN(status, "clCreateCommandQueue failed.");
-	}
+  #ifdef CL_VERSION_2_0
+    // Create command queue
+    if (deviceInfo->checkOpenCL2_XCompatibility()) {
+       cl_command_queue_properties *props = nullptr;
+       if (!queue_props.empty())
+         props = &queue_props[0];
+       commandQueue = clCreateCommandQueueWithProperties(context, device,
+               props, &errorCode);
+      if (errorCode != CL_SUCCESS)
+        Util::LogError(
+            "Error: clCreateCommandQueueWithProperties() returned %s.\n",
+            Util::TranslateOpenCLError(errorCode));
+    }
 
-	if (!commandQueue)
-		throw std::exception();
+  #endif
+    if (!commandQueue) {
+      cl_command_queue_properties properties = 0;
+      for (uint64_t bf : queue_props)
+          properties = properties | bf;
+      commandQueue = clCreateCommandQueue(context, device, properties, &errorCode);
+      if (errorCode != CL_SUCCESS)
+        Util::LogError("Error: clCreateCommandQueue() returned %s.\n", Util::TranslateOpenCLError(errorCode));
+    }
+    if (!commandQueue)
+      throw std::runtime_error("Failed to create command queue");
 }
 
 DeviceOCL::~DeviceOCL() {

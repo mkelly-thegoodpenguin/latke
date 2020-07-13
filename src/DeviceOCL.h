@@ -37,12 +37,13 @@
 
 #include "IArch.h"
 #include "UtilOCL.h"
+#include <vector>
 
 namespace ltk {
 
 struct DeviceOCL {
 	DeviceOCL(cl_context my_context, bool ownsCtxt, cl_device_id my_device,
-			DeviceInfo *deviceInfo, IArch *architecture);
+			DeviceInfo *deviceInfo, IArch *architecture,std::vector<uint64_t> queue_props);
 	~DeviceOCL();
 
 	std::string getBuildOptions();

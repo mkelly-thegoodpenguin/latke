@@ -59,7 +59,8 @@ DeviceOCL* DeviceManagerOCL::getDevice(size_t deviceNumber) {
     return devices[deviceNumber];
 }
 
-int DeviceManagerOCL::init(int32_t platformId, eDeviceType type, int32_t deviceNumber, bool verbose) {
+int DeviceManagerOCL::init(int32_t platformId, eDeviceType type,
+        int32_t deviceNumber, bool verbose,  std::vector<uint64_t> queue_props) {
     cl_device_type dType;
     switch(type){
         case DEFAULT:
@@ -142,7 +143,7 @@ int DeviceManagerOCL::init(int32_t platformId, eDeviceType type, int32_t deviceN
         }
         devices.push_back(
                 new DeviceOCL(deviceContext, !singleContext, deviceIds[i],
-                        deviceInfo, arch));
+                        deviceInfo, arch, queue_props));
     }
     // clean up all-devices context if we are not using single context
     // for all devices

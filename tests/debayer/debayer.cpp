@@ -88,10 +88,11 @@ template<typename M, typename A> int Debayer<M, A>::debayer(int argc,
 		postProcBuffers[i] = new uint8_t[frameSizeOut];
 		availableBuffers.push(postProcBuffers[i]);
 	}
+  std::vector<uint64_t> queue_props{0, CL_QUEUE_OUT_OF_ORDER_EXEC_MODE_ENABLE};
 
 	// 1. create device manager
 	auto deviceManager = std::make_shared<DeviceManagerOCL>(true);
-	auto rc = deviceManager->init(platformId, deviceType, deviceNum, true);
+	auto rc = deviceManager->init(platformId, deviceType, deviceNum, true, queue_props);
 	if (rc != DeviceSuccess) {
 		std::cerr << "Failed to initialize OpenCL device";
 		return -1;
@@ -147,7 +148,6 @@ template<typename M, typename A> int Debayer<M, A>::debayer(int argc,
 		std::cerr << "Unable to build kernel. Exiting" << std::endl;
 		return -1;
 	}
-  std::vector<uint64_t> queue_props{0, CL_QUEUE_OUT_OF_ORDER_EXEC_MODE_ENABLE,0, 0};
 
 	A allocator(dev, bufferWidth, bufferHeight, 1, CL_UNSIGNED_INT8, queue_props);
 	A allocatorOut(dev, bufferWidth, bufferHeight, 4, CL_UNSIGNED_INT8, queue_props);

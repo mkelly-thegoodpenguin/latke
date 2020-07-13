@@ -48,7 +48,8 @@ class DeviceManagerOCL {
 public:
 	DeviceManagerOCL(bool singleCtxt);
 	~DeviceManagerOCL(void);
-	int init(int32_t platformId, eDeviceType type, int32_t deviceNumber, bool verbose);
+	int init(int32_t platformId, eDeviceType type,
+	        int32_t deviceNumber, bool verbose,  std::vector<uint64_t> queue_props);
 
 	DeviceOCL* getDevice(size_t deviceNumber);
 	size_t getNumDevices();
