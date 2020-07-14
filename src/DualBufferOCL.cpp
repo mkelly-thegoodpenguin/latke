@@ -33,13 +33,11 @@ DualBufferOCL::DualBufferOCL(DeviceOCL *device, size_t len, bool doHostToDevice,
 		numBytes(len){
 	if (numBytes == 0)
 		throw std::exception();
-	cl_mem_flags flags = CL_MEM_ALLOC_HOST_PTR;
-	flags |= hostToDevice ? CL_MEM_READ_ONLY : CL_MEM_WRITE_ONLY;
-	/*
-	 if (__DEBUG) {
-	 flags |= hostToDevice ? CL_MEM_HOST_WRITE_ONLY : CL_MEM_HOST_READ_ONLY;
-	 }
-	 */
+  cl_mem_flags flags = CL_MEM_ALLOC_HOST_PTR;
+  flags |=
+      hostToDevice ?
+          (CL_MEM_READ_ONLY | CL_MEM_HOST_WRITE_ONLY) :
+          (CL_MEM_WRITE_ONLY | CL_MEM_HOST_READ_ONLY);
 
 	cl_int error_code = CL_SUCCESS;
 	deviceBuffer = clCreateBuffer(device->context, flags, numBytes, hostBuffer,
