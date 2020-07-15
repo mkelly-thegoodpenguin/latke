@@ -25,7 +25,7 @@
 
 namespace ltk {
 
-DualBufferOCL::DualBufferOCL(DeviceOCL *device, size_t len, bool doHostToDevice, std::vector<uint64_t> queue_props) :
+DualBufferOCL::DualBufferOCL(DeviceOCL *device, size_t len, bool doHostToDevice, cl_command_queue_properties queue_props) :
 		hostToDevice(doHostToDevice),
 		queue(new QueueOCL(device, queue_props)),
 		hostBuffer(nullptr),

@@ -49,24 +49,21 @@
 namespace ltk {
 
 DeviceOCL::DeviceOCL(cl_context my_context, bool ownsCtxt,
-		cl_device_id my_device, DeviceInfo *deviceInfo, IArch *architecture, std::vector<uint64_t> queue_props) :
+		cl_device_id my_device, DeviceInfo *deviceInfo, IArch *architecture, cl_command_queue_properties queue_props) :
 		ownsContext(ownsCtxt),
 		context(my_context),
 		device(my_device),
-		commandQueue(NULL),
+		queue(NULL),
 		deviceInfo(deviceInfo),
 		arch(architecture) {
-
     cl_int errorCode;
 
   #ifdef CL_VERSION_2_0
     // Create command queue
     if (deviceInfo->checkOpenCL2_XCompatibility()) {
-       cl_command_queue_properties *props = nullptr;
-       if (!queue_props.empty())
-         props = &queue_props[0];
-       commandQueue = clCreateCommandQueueWithProperties(context, device,
-               props, &errorCode);
+      cl_queue_properties p[] =  {CL_QUEUE_PROPERTIES, queue_props, 0};
+      queue = clCreateCommandQueueWithProperties(context, device,
+              p, &errorCode);
       if (errorCode != CL_SUCCESS)
         Util::LogError(
             "Error: clCreateCommandQueueWithProperties() returned %s.\n",
@@ -74,15 +71,12 @@ DeviceOCL::DeviceOCL(cl_context my_context, bool ownsCtxt,
     }
 
   #endif
-    if (!commandQueue) {
-      cl_command_queue_properties properties = 0;
-      for (uint64_t bf : queue_props)
-          properties = properties | bf;
-      commandQueue = clCreateCommandQueue(context, device, properties, &errorCode);
+    if (!queue) {
+      queue = clCreateCommandQueue(context, device, queue_props, &errorCode);
       if (errorCode != CL_SUCCESS)
         Util::LogError("Error: clCreateCommandQueue() returned %s.\n", Util::TranslateOpenCLError(errorCode));
     }
-    if (!commandQueue)
+    if (!queue)
       throw std::runtime_error("Failed to create command queue");
 }
 
@@ -90,8 +84,8 @@ DeviceOCL::~DeviceOCL() {
 	delete arch;
 	delete deviceInfo;
 	cl_int errorCode = CL_SUCCESS;
-	if (commandQueue) {
-		errorCode = clReleaseCommandQueue(commandQueue);
+	if (queue) {
+		errorCode = clReleaseCommandQueue(queue);
 		if (errorCode != CL_SUCCESS) {
 			Util::LogError("Error: clReleaseCommandQueue() returned %s.\n",
 					Util::TranslateOpenCLError(errorCode));

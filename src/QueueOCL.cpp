@@ -27,6 +27,7 @@
 #include <iterator>
 #include <iostream>
 #include <functional>
+#include <memory>
 
 namespace ltk {
 
@@ -37,18 +38,16 @@ QueueOCL::QueueOCL(cl_command_queue cmdQueue) :
 		queue(cmdQueue), ownsQueue(false) {
 }
 
-QueueOCL::QueueOCL(DeviceOCL *device, std::vector<uint64_t> queue_props) :
+QueueOCL::QueueOCL(DeviceOCL *device, cl_command_queue_properties queue_props) :
 		queue(0), ownsQueue(true) {
 	cl_int errorCode;
 
 #ifdef CL_VERSION_2_0
 	// Create command queue
 	if (device->deviceInfo->checkOpenCL2_XCompatibility()) {
-	   cl_command_queue_properties *props = nullptr;
-	   if (!queue_props.empty())
-	     props = &queue_props[0];
+	  cl_queue_properties p[] =  {CL_QUEUE_PROPERTIES, queue_props, 0};
 		queue = clCreateCommandQueueWithProperties(device->context, device->device,
-		         props, &errorCode);
+		        p, &errorCode);
 		if (errorCode != CL_SUCCESS)
 			Util::LogError(
 					"Error: clCreateCommandQueueWithProperties() returned %s.\n",
@@ -57,10 +56,7 @@ QueueOCL::QueueOCL(DeviceOCL *device, std::vector<uint64_t> queue_props) :
 
 #endif
 	if (!queue) {
-		cl_command_queue_properties properties = 0;
-		for (uint64_t bf : queue_props)
-		    properties = properties | bf;
-		queue = clCreateCommandQueue(device->context, device->device, properties, &errorCode);
+		queue = clCreateCommandQueue(device->context, device->device, queue_props, &errorCode);
 		if (errorCode != CL_SUCCESS)
 			Util::LogError("Error: clCreateCommandQueue() returned %s.\n", Util::TranslateOpenCLError(errorCode));
 	}

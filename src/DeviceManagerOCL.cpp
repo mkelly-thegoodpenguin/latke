@@ -60,7 +60,7 @@ DeviceOCL* DeviceManagerOCL::getDevice(size_t deviceNumber) {
 }
 
 int DeviceManagerOCL::init(int32_t platformId, eDeviceType type,
-        int32_t deviceNumber, bool verbose,  std::vector<uint64_t> queue_props) {
+        int32_t deviceNumber, bool verbose,  cl_command_queue_properties queue_props) {
     cl_device_type dType;
     switch(type){
         case DEFAULT:

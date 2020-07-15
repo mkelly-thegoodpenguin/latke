@@ -88,7 +88,7 @@ template<typename M, typename A> int Debayer<M, A>::debayer(int argc,
 		postProcBuffers[i] = new uint8_t[frameSizeOut];
 		availableBuffers.push(postProcBuffers[i]);
 	}
-  std::vector<uint64_t> queue_props{0, CL_QUEUE_OUT_OF_ORDER_EXEC_MODE_ENABLE};
+  cl_command_queue_properties queue_props = CL_QUEUE_OUT_OF_ORDER_EXEC_MODE_ENABLE;
 
 	// 1. create device manager
 	auto deviceManager = std::make_shared<DeviceManagerOCL>(true);

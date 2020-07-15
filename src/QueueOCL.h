@@ -32,7 +32,7 @@ class QueueOCL
 public:
     QueueOCL(QueueOCL& rhs);
     QueueOCL(cl_command_queue cmdQueue);
-    QueueOCL(DeviceOCL* device, std::vector<uint64_t> queue_props);
+    QueueOCL(DeviceOCL* device, cl_command_queue_properties queue_props);
     ~QueueOCL(void);
     tDeviceRC finish();
     tDeviceRC flush();

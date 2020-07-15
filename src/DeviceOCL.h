@@ -43,7 +43,7 @@ namespace ltk {
 
 struct DeviceOCL {
 	DeviceOCL(cl_context my_context, bool ownsCtxt, cl_device_id my_device,
-			DeviceInfo *deviceInfo, IArch *architecture,std::vector<uint64_t> queue_props);
+			DeviceInfo *deviceInfo, IArch *architecture,cl_command_queue_properties queue_props);
 	~DeviceOCL();
 
 	std::string getBuildOptions();
@@ -51,7 +51,7 @@ struct DeviceOCL {
 	bool ownsContext;
 	cl_context context;           // hold the context handler
 	cl_device_id device;            // hold the selected device handler
-	cl_command_queue commandQueue;      // hold the commands-queue handler
+	cl_command_queue queue;      // hold the commands-queue handler
 	DeviceInfo *deviceInfo;
 	IArch *arch;
 };

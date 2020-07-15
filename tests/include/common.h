@@ -62,7 +62,7 @@ typedef void (CL_CALLBACK *pfn_event_notify)(cl_event event,
 class BufferAllocater {
 public:
 	BufferAllocater(DeviceOCL *dev, size_t dimX, size_t dimY, size_t bps,
-			uint32_t data_type, std::vector<uint64_t> queue_props) :
+			uint32_t data_type, cl_command_queue_properties queue_props) :
 			m_dev(dev),
 			m_dimX(dimX),
 			m_dimY(dimY),
@@ -80,13 +80,13 @@ private:
 	size_t m_dimX;
 	size_t m_dimY;
 	size_t m_bps;
-  std::vector<uint64_t> m_queue_props;
+	cl_command_queue_properties m_queue_props;
 };
 
 class ImageAllocater {
 public:
 	ImageAllocater(DeviceOCL *dev, size_t dimX, size_t dimY, size_t bps,
-			uint32_t data_type, std::vector<uint64_t> queue_props) :
+			uint32_t data_type, cl_command_queue_properties queue_props) :
 			m_dev(dev),
 			m_dimX(dimX),
 			m_dimY(dimY),
@@ -104,6 +104,6 @@ private:
 	size_t m_dimY;
 	size_t m_bps;
 	uint32_t m_data_type;
-	std::vector<uint64_t> m_queue_props;
+	cl_command_queue_properties m_queue_props;
 };
 
