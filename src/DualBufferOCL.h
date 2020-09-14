@@ -24,11 +24,10 @@
 #include "IDualMemOCL.h"
 namespace ltk {
 
-
 class DualBufferOCL: public IDualMemOCL {
 
 public:
-	DualBufferOCL(DeviceOCL *device, size_t len, bool hostToDevice, cl_command_queue_properties queue_props);
+	DualBufferOCL(DeviceOCL *device, size_t len, DualBufferType type, cl_command_queue_properties queue_props);
 	~DualBufferOCL();
 
 	bool map(cl_uint num_events_in_wait_list, const cl_event *event_wait_list,
@@ -36,6 +35,9 @@ public:
 	bool unmap(cl_uint num_events_in_wait_list, const cl_event *event_wait_list,
 			cl_event *completionEvent);
 
+	bool map(QueueOCL *mapQueue, cl_uint num_events_in_wait_list,
+			const cl_event *event_wait_list, cl_event *completionEvent,
+			bool synchronous, cl_map_flags flags);
 	bool map(QueueOCL *mapQueue, cl_uint num_events_in_wait_list,
 			const cl_event *event_wait_list, cl_event *completionEvent,
 			bool synchronous);
@@ -48,7 +50,7 @@ public:
 	QueueOCL* getQueue() const;
 private:
 	void cleanup();
-	bool hostToDevice;
+	DualBufferType m_type;
 	QueueOCL *queue;
 	unsigned char *hostBuffer;
 	cl_mem deviceBuffer;

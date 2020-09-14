@@ -24,6 +24,12 @@
 #include "platform.h"
 namespace ltk {
 
+enum DualBufferType {
+	HostToDeviceBuffer,
+	DeviceToHostBuffer,
+	AmbiBuffer
+};
+
 class IDualMemOCL {
 
 public:

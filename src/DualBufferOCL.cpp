@@ -21,12 +21,13 @@
 #ifdef OPENCL_FOUND
 #include "DualBufferOCL.h"
 #include "UtilOCL.h"
+#include <cassert>
 
 
 namespace ltk {
 
-DualBufferOCL::DualBufferOCL(DeviceOCL *device, size_t len, bool doHostToDevice, cl_command_queue_properties queue_props) :
-		hostToDevice(doHostToDevice),
+DualBufferOCL::DualBufferOCL(DeviceOCL *device, size_t len,DualBufferType type, cl_command_queue_properties queue_props) :
+		m_type(type),
 		queue(new QueueOCL(device, queue_props)),
 		hostBuffer(nullptr),
 		deviceBuffer(0),
@@ -34,11 +35,11 @@ DualBufferOCL::DualBufferOCL(DeviceOCL *device, size_t len, bool doHostToDevice,
 	if (numBytes == 0)
 		throw std::exception();
   cl_mem_flags flags = CL_MEM_ALLOC_HOST_PTR;
-  flags |=
-      hostToDevice ?
-          (CL_MEM_READ_ONLY | CL_MEM_HOST_WRITE_ONLY) :
-          (CL_MEM_WRITE_ONLY | CL_MEM_HOST_READ_ONLY);
-
+  if (type == HostToDeviceBuffer){
+	  flags |= (CL_MEM_READ_ONLY | CL_MEM_HOST_WRITE_ONLY);
+  } else if (type == DeviceToHostBuffer){
+	  flags |= (CL_MEM_WRITE_ONLY | CL_MEM_HOST_READ_ONLY);
+  }
 	cl_int error_code = CL_SUCCESS;
 	deviceBuffer = clCreateBuffer(device->context, flags, numBytes, hostBuffer,
 			&error_code);
@@ -85,9 +86,9 @@ bool DualBufferOCL::unmap(cl_uint num_events_in_wait_list,
 
 bool DualBufferOCL::map(QueueOCL *mapQueue, cl_uint num_events_in_wait_list,
 		const cl_event *event_wait_list, cl_event *completionEvent,
-		bool synchronous) {
+		bool synchronous, cl_map_flags flags) {
 	cl_int error_code = Util::mapBuffer(mapQueue->getQueueImpl(), deviceBuffer,
-			synchronous, hostToDevice ? CL_MAP_WRITE : CL_MAP_READ, numBytes,
+			synchronous, flags, numBytes,
 			num_events_in_wait_list, event_wait_list, completionEvent,
 			(void**) &hostBuffer);
 	if (CL_SUCCESS != error_code) {
@@ -97,6 +98,15 @@ bool DualBufferOCL::map(QueueOCL *mapQueue, cl_uint num_events_in_wait_list,
 		return false;
 	}
 	return true;
+}
+
+bool DualBufferOCL::map(QueueOCL *mapQueue, cl_uint num_events_in_wait_list,
+		const cl_event *event_wait_list, cl_event *completionEvent,
+		bool synchronous) {
+	    assert(m_type == HostToDeviceBuffer || m_type == DeviceToHostBuffer);
+	    cl_map_flags f = m_type ==  HostToDeviceBuffer ? CL_MAP_WRITE : CL_MAP_READ;
+			return map(mapQueue, num_events_in_wait_list,event_wait_list,
+					completionEvent, synchronous,f);
 }
 bool DualBufferOCL::unmap(QueueOCL *mapQueue, cl_uint num_events_in_wait_list,
 		const cl_event *event_wait_list, cl_event *completionEvent) {

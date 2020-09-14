@@ -73,7 +73,7 @@ public:
 	}
 	std::unique_ptr<DualBufferOCL> allocate(bool hostToDevice) {
 		return std::make_unique<DualBufferOCL>(m_dev, m_dimX * m_dimY * m_bps,
-				hostToDevice, m_queue_props);
+				hostToDevice ? HostToDeviceBuffer : DeviceToHostBuffer, m_queue_props);
 	}
 private:
 	DeviceOCL *m_dev;
