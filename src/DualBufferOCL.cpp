@@ -36,9 +36,9 @@ DualBufferOCL::DualBufferOCL(DeviceOCL *device, size_t len,DualBufferType type, 
 		throw std::exception();
   cl_mem_flags flags = CL_MEM_ALLOC_HOST_PTR;
   if (type == HostToDeviceBuffer){
-	  flags |= (CL_MEM_READ_ONLY | CL_MEM_HOST_WRITE_ONLY);
+	  flags |= CL_MEM_READ_ONLY | CL_MEM_HOST_WRITE_ONLY;
   } else if (type == DeviceToHostBuffer){
-	  flags |= (CL_MEM_WRITE_ONLY | CL_MEM_HOST_READ_ONLY);
+	  flags |= CL_MEM_WRITE_ONLY | CL_MEM_HOST_READ_ONLY;
   }
 	cl_int error_code = CL_SUCCESS;
 	deviceBuffer = clCreateBuffer(device->context, flags, numBytes, hostBuffer,
@@ -104,7 +104,7 @@ bool DualBufferOCL::map(QueueOCL *mapQueue, cl_uint num_events_in_wait_list,
 		const cl_event *event_wait_list, cl_event *completionEvent,
 		bool synchronous) {
 	    assert(m_type == HostToDeviceBuffer || m_type == DeviceToHostBuffer);
-	    cl_map_flags f = m_type ==  HostToDeviceBuffer ? CL_MAP_WRITE : CL_MAP_READ;
+	    cl_map_flags f = m_type ==  HostToDeviceBuffer ? CL_MAP_WRITE_INVALIDATE_REGION : CL_MAP_READ;
 			return map(mapQueue, num_events_in_wait_list,event_wait_list,
 					completionEvent, synchronous,f);
 }
