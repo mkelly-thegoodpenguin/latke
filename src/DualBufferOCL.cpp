@@ -53,7 +53,7 @@ DualBufferOCL::DualBufferOCL(DeviceOCL *device,
   flags |= client_flags;
 
   cl_int error_code = CL_SUCCESS;
-  deviceBuffer = clCreateBuffer(device->context, flags, numBytes, nullptr,
+  deviceBuffer = clCreateBuffer(device->context, flags, numBytes, buffer,
 			&error_code);
   if (CL_SUCCESS != error_code) {
 		Util::LogError(
