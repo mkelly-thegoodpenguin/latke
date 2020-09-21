@@ -41,7 +41,7 @@ DualBufferOCL::DualBufferOCL(DeviceOCL *device, size_t len,DualBufferType type, 
 	  flags |= CL_MEM_WRITE_ONLY | CL_MEM_HOST_READ_ONLY;
   }
 	cl_int error_code = CL_SUCCESS;
-	deviceBuffer = clCreateBuffer(device->context, flags, numBytes, hostBuffer,
+	deviceBuffer = clCreateBuffer(device->context, flags, numBytes, nullptr,
 			&error_code);
 	if (CL_SUCCESS != error_code) {
 		Util::LogError(
