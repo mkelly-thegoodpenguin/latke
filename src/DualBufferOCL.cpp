@@ -27,6 +27,16 @@
 namespace ltk {
 
 DualBufferOCL::DualBufferOCL(DeviceOCL *device, size_t len,DualBufferType type, cl_command_queue_properties queue_props) :
+		DualBufferOCL(device, len,type,0,nullptr,queue_props)
+{
+}
+
+DualBufferOCL::DualBufferOCL(DeviceOCL *device,
+							size_t len,
+							DualBufferType type,
+							cl_mem_flags client_flags,
+							void* buffer,
+							cl_command_queue_properties queue_props) :
 		m_type(type),
 		queue(new QueueOCL(device, queue_props)),
 		hostBuffer(nullptr),
@@ -34,23 +44,27 @@ DualBufferOCL::DualBufferOCL(DeviceOCL *device, size_t len,DualBufferType type, 
 		numBytes(len){
 	if (numBytes == 0)
 		throw std::exception();
-  cl_mem_flags flags = CL_MEM_ALLOC_HOST_PTR;
+  cl_mem_flags flags = buffer ? CL_MEM_ALLOC_HOST_PTR : 0;
   if (type == HostToDeviceBuffer){
 	  flags |= CL_MEM_READ_ONLY | CL_MEM_HOST_WRITE_ONLY;
   } else if (type == DeviceToHostBuffer){
 	  flags |= CL_MEM_WRITE_ONLY | CL_MEM_HOST_READ_ONLY;
   }
-	cl_int error_code = CL_SUCCESS;
-	deviceBuffer = clCreateBuffer(device->context, flags, numBytes, nullptr,
+  flags |= client_flags;
+
+  cl_int error_code = CL_SUCCESS;
+  deviceBuffer = clCreateBuffer(device->context, flags, numBytes, nullptr,
 			&error_code);
-	if (CL_SUCCESS != error_code) {
+  if (CL_SUCCESS != error_code) {
 		Util::LogError(
 				"Error: clCreateBuffer (CL_QUEUE_CONTEXT) returned %s.\n",
 				Util::TranslateOpenCLError(error_code));
 		cleanup();
 		throw std::exception();
-	}
+  }
 }
+
+
 DualBufferOCL::~DualBufferOCL() {
 	cleanup();
 }

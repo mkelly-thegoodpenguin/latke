@@ -28,6 +28,9 @@ class DualBufferOCL: public IDualMemOCL {
 
 public:
 	DualBufferOCL(DeviceOCL *device, size_t len, DualBufferType type, cl_command_queue_properties queue_props);
+	DualBufferOCL(DeviceOCL *device, size_t len, DualBufferType type,
+					cl_mem_flags client_flags,	void* buffer,
+						cl_command_queue_properties queue_props);
 	~DualBufferOCL();
 
 	bool map(cl_uint num_events_in_wait_list, const cl_event *event_wait_list,
