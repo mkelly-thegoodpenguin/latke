@@ -31,8 +31,7 @@ namespace ltk {
 KernelOCL::KernelOCL(KernelInitInfo init) :
 		initInfo(init), myKernel(0), device(init.device->device), context(
 				init.device->context), argCount(0) {
-	// we are always verbose if we are building
-	bool verbose = initInfo.binaryBuildMethod != LOAD_BINARY;
+	bool verbose = true;
 	cl_program program = 0;
 	buildProgramData data = getProgramData();
 	if (initInfo.binaryBuildMethod == LOAD_BINARY ) {
