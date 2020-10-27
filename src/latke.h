@@ -28,5 +28,6 @@
 #include "platform.h"
 #include "UtilOCL.h"
 #include "KernelOCL.h"
+#include "ArchFactory.h"
 
 
