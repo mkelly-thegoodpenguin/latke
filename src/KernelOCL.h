@@ -64,8 +64,12 @@ struct KernelInitInfo: KernelInitInfoBase {
 
 class KernelOCL {
 public:
+	KernelOCL(KernelInitInfo initInfo, cl_program program);
 	KernelOCL(KernelInitInfo initInfo);
 	virtual ~KernelOCL(void);
+
+	static cl_program generateProgram(KernelInitInfo init);
+
 	cl_kernel getKernel() {
 		return myKernel;
 	}
@@ -73,7 +77,7 @@ public:
 		return device;
 	}
 	void enqueue(EnqueueInfoOCL &info);
-	virtual void generateBinary();
+	static void generateBinary(KernelInitInfo init);
 
 	template<typename T> void pushArg(T *val) {
 		auto error_code = clSetKernelArg(myKernel, argCount++, sizeof(T), val);
@@ -84,15 +88,16 @@ public:
 		}
 	}
 protected:
-	cl_program loadBinary(bool verbose);
-	buildProgramData getProgramData();
-	std::string getBuildOptions();
+	static void generateBinaryName(buildProgramData &data);
+	static buildProgramData getProgramData(KernelInitInfo init);
+	static std::string getBuildOptions(KernelInitInfo init);
 	KernelInitInfo initInfo;
 	cl_kernel myKernel;
 	cl_ulong localMemorySize;
 	cl_device_id device;
 	cl_context context;
 	uint32_t argCount;
+	cl_program program;
 };
 }
 #endif

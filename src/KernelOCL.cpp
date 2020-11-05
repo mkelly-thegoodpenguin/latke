@@ -28,24 +28,19 @@
 namespace ltk {
 
 
-KernelOCL::KernelOCL(KernelInitInfo init) :
-		initInfo(init), myKernel(0), device(init.device->device), context(
-				init.device->context), argCount(0) {
+KernelOCL::KernelOCL(KernelInitInfo init) : KernelOCL(init, 0)
+{}
+
+KernelOCL::KernelOCL(KernelInitInfo init, cl_program prog) : initInfo(init),
+											myKernel(0),
+											device(init.device->device),
+											context(init.device->context),
+											argCount(0),
+											program(prog) {
 	bool verbose = true;
-	cl_program program = 0;
-	buildProgramData data = getProgramData();
-	if (initInfo.binaryBuildMethod == LOAD_BINARY ) {
-		program = loadBinary(verbose);
-	} else {
-		data.binaryName = "";
-		cl_int error_code = buildOpenCLProgram(program, context, data);
-		if (error_code != CL_SUCCESS) {
-			Util::LogError("Error: buildOpenCLProgram returned %s.\n",
-					Util::TranslateOpenCLError(error_code));
-			throw std::runtime_error(
-					("Failed to build program " + data.programName + "\n").c_str());
-		}
-	}
+	if (!prog)
+		program = generateProgram(init);
+
 	// Create the required kernel
 	cl_int error_code;
 	myKernel = clCreateKernel(program, initInfo.kernelName.c_str(),
@@ -57,10 +52,11 @@ KernelOCL::KernelOCL(KernelInitInfo init) :
 		throw std::runtime_error(
 				("Failed to create kernel " + initInfo.kernelName + "\n").c_str());
 	}
-	if (program)
-		clReleaseProgram(program);
 	if (verbose)
 		std::cout << "Created kernel " << initInfo.kernelName << std::endl;
+
+	if (!prog)
+		clReleaseProgram(program);
 }
 
 KernelOCL::~KernelOCL(void) {
@@ -68,59 +64,67 @@ KernelOCL::~KernelOCL(void) {
 		clReleaseKernel(myKernel);
 }
 
-cl_program KernelOCL::loadBinary(bool verbose) {
-	buildProgramData data = getProgramData();
-	// try binary
-	char deviceName[1024];
-	auto status = clGetDeviceInfo(data.device,
-	CL_DEVICE_NAME, sizeof(deviceName), deviceName,
-	NULL);
-
-	// remove white space from device name
-	std::string deviceNameString(deviceName);
-	deviceNameString.erase(
-			remove_if(deviceNameString.begin(), deviceNameString.end(),
-					::isspace), deviceNameString.end());
-
+cl_program KernelOCL::generateProgram(KernelInitInfo init){
 	cl_program program = 0;
+	buildProgramData data = getProgramData(init);
+	if (init.binaryBuildMethod == LOAD_BINARY ) {
+		generateBinaryName(data);
+	} else {
+		data.binaryName = "";
+	}
 
-	// try binary
-	if (verbose)
-		std::cout << "Loading binary " << data.binaryName << std::endl;
-	data.binaryName = data.binaryName + "." + deviceNameString;
-	buildOpenCLProgram(program, context, data);
+	cl_int error_code = buildOpenCLProgram(program, init.device->context, data);
+	if (error_code != CL_SUCCESS) {
+		Util::LogError("Error: buildOpenCLProgram returned %s.\n",
+				Util::TranslateOpenCLError(error_code));
+		throw std::runtime_error(
+				("Failed to build program " + data.programName + "\n").c_str());
+	}
+
 	return program;
 }
 
-buildProgramData KernelOCL::getProgramData() {
+void KernelOCL::generateBinaryName(buildProgramData &data) {
+	// try binary
+	char deviceName[1024];
+	auto status = clGetDeviceInfo(data.device,CL_DEVICE_NAME, sizeof(deviceName), deviceName,NULL);
+
+	// remove white space from device name
+	std::string deviceNameString(deviceName);
+	deviceNameString.erase(	remove_if(deviceNameString.begin(), deviceNameString.end(),::isspace),
+							deviceNameString.end());
+	data.binaryName = data.binaryName + "." + deviceNameString;
+}
+
+buildProgramData KernelOCL::getProgramData(KernelInitInfo init) {
 	buildProgramData data;
-	data.device = initInfo.device->device;
-	data.programName = initInfo.programName;
-	data.binaryName = initInfo.binaryName;
-	data.programPath = initInfo.directory;
-	data.flagsStr = getBuildOptions() + initInfo.buildOptions;
+	data.device = init.device->device;
+	data.programName = init.programName;
+	data.binaryName = init.binaryName;
+	data.programPath = init.directory;
+	data.flagsStr = getBuildOptions(init) + init.buildOptions;
 	return data;
 }
 
-void KernelOCL::generateBinary() {
-	buildProgramData data = getProgramData();
+void KernelOCL::generateBinary(KernelInitInfo init) {
+	buildProgramData data = getProgramData(init);
 	bifData biData;
 	biData.programPath = data.programPath;
 	biData.programFileName = data.programName;
-	biData.binaryName = initInfo.binaryName;
+	biData.binaryName = init.binaryName;
 	biData.flagsStr = data.flagsStr;
-	if (!(initInfo.binaryBuildMethod & BUILD_BINARY_OFFLINE_ALL_DEVICES)) {
+	if (!(init.binaryBuildMethod & BUILD_BINARY_OFFLINE_ALL_DEVICES)) {
 		biData.numDevices = 1;
-		biData.devices = &device;
+		biData.devices = &init.device->device;
 	}
 	generateBinaryImage(biData);
 
 }
 
-std::string KernelOCL::getBuildOptions() {
+std::string KernelOCL::getBuildOptions(KernelInitInfo init) {
 	std::stringstream bldOptions;
-	bldOptions << initInfo.device->getBuildOptions();
-	if (initInfo.device->deviceInfo->checkOpenCL2_XCompatibility())
+	bldOptions << init.device->getBuildOptions();
+	if (init.device->deviceInfo->checkOpenCL2_XCompatibility())
 		bldOptions << "-cl-std=CL2.0 -D OPENCL_2_X";
 	return bldOptions.str();
 }
