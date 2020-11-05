@@ -12,10 +12,12 @@ add_definitions(-DCL_USE_DEPRECATED_OPENCL_1_2_APIS=1)
 set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
 
 find_package(OpenCL REQUIRED)
-include_directories(${OPENCL_INCLUDE_DIRS} src tests/include)
+include_directories(${OPENCL_INCLUDE_DIRS} src tests/include /tools/Xilinx/Vivado/2020.1/include/ /opt/xilinx/xrt/include/)
 
 # Install directories
 include(GNUInstallDirs)
+
+option(XILINX "Support Xilinx XRT" OFF)
 
 
 # Defines the source code for the library
@@ -72,3 +74,10 @@ target_link_libraries(debayer_buffer latke ${OPENCL_LIBRARIES} Threads::Threads)
 
 add_executable(debayer_image tests/debayer/debayerImage.cpp)
 target_link_libraries(debayer_image latke ${OPENCL_LIBRARIES} Threads::Threads)
+
+if (XILINX)
+add_executable(wide_vadd tests/wide_vadd/wide_vadd_main.cpp)
+target_link_libraries(wide_vadd latke ${OPENCL_LIBRARIES} Threads::Threads)
+endif()
+
+
