@@ -49,8 +49,8 @@ using namespace ltk;
 #include <omp.h>
 
 
-const uint32_t num_concurrent_kernels = 4;
-const uint32_t bufferSize = (1024 * 1024 * 2);
+const uint32_t num_concurrent_kernels = 2;
+const uint32_t bufferSize = (1024 * 1024 * 4);
 const uint32_t numSubBuffers = 1;
 std::string kernelName = "wide_vadd";
 
@@ -317,7 +317,7 @@ int main(int argc, char *argv[])
     	 }
     }
 
-	clWaitForEvents(numSubBuffers, (const cl_event *)&globalKernelEvents);
+	clWaitForEvents(globalKernelEvents.size(), (const cl_event *)&globalKernelEvents);
 
     for (uint32_t i = 0; i < num_concurrent_kernels; ++i) {
     	auto obj = objects + i;
