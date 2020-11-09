@@ -49,7 +49,7 @@ using namespace ltk;
 #include <omp.h>
 
 
-const uint32_t num_concurrent_kernels = 4;
+const uint32_t num_concurrent_kernels = 1;
 const uint32_t bufferSize = (1024 * 1024 * (8/num_concurrent_kernels));
 std::string kernelName = "wide_vadd";
 
@@ -146,28 +146,8 @@ int main(int argc, char *argv[])
 
 	std::stringstream buildOptions;
 	buildOptions << " -I ./ ";
-	switch (arch->getVendorId()) {
-		case vendorIdAMD:
-			buildOptions << " -D AMD_GPU_ARCH";
-			break;
-		case vendorIdNVD:
-			buildOptions << " -D NVIDIA_ARCH";
-			break;
-		case vendorIdXILINX:
-			buildOptions << "";
-			break;
-    case vendorIdINTL:
-      buildOptions << "";
-      break;
-		default:
-			return -1;
-
-	}
-	buildOptions << arch->getBuildOptions();
-	//buildOptions << " -D DEBUG";
-
 	KernelInitInfoBase initInfoBase(dev, buildOptions.str(), "",LOAD_BINARY);
-	KernelInitInfo initInfo(initInfoBase, "", "wide_vadd","");
+	KernelInitInfo initInfo(initInfoBase, "", "wide_vadd_250HW","");
 	cl_program program = KernelOCL::generateProgram(initInfo);
 
 
