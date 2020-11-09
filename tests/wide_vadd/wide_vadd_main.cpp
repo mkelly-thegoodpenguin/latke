@@ -44,12 +44,11 @@ EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <CL/cl_ext_xilinx.h>
 #include "latke.h"
 using namespace ltk;
-
 // OpenMP
 #include <omp.h>
 
-
-const uint32_t num_concurrent_kernels = 1;
+const uint32_t num_concurrent_kernels = 4;
+// number of 32-bit items in kernel buffer
 const uint32_t bufferSize = (1024 * 1024 * (8/num_concurrent_kernels));
 std::string kernelName = "wide_vadd";
 
