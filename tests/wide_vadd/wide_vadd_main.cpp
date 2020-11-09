@@ -50,8 +50,7 @@ using namespace ltk;
 
 
 const uint32_t num_concurrent_kernels = 2;
-const uint32_t bufferSize = (1024 * 1024 * 4);
-const uint32_t numSubBuffers = 1;
+const uint32_t bufferSize = (1024 * 1024 * (8/num_concurrent_kernels));
 std::string kernelName = "wide_vadd";
 
 
@@ -62,49 +61,7 @@ void vadd_sw(uint32_t *a, uint32_t *b, uint32_t *c, uint32_t size){
     }
 }
 
-int subdivide_buffer(std::vector<cl::Buffer> &divided, cl::Buffer buf_in, cl_mem_flags flags, int num_divisions){
-    // Get the size of the buffer
-    size_t size;
-    size = buf_in.getInfo<CL_MEM_SIZE>();
-
-    if (num_divisions == 1){
-    	divided.push_back(buf_in);
-    	return 0;
-    }
-
-    if (size / num_divisions <= 4096) {
-        return -1;
-    }
-
-    cl_buffer_region region;
-
-    int err;
-    region.origin = 0;
-    region.size   = size / num_divisions;
-
-    // Round region size up to nearest 4k for efficient burst behavior
-    if (region.size % 4096 != 0) {
-        region.size += (4096 - (region.size % 4096));
-    }
-
-    for (int i = 0; i < num_divisions; i++) {
-        if (i == num_divisions - 1) {
-            if ((region.origin + region.size) > size) {
-                region.size = size - region.origin;
-            }
-        }
-        cl::Buffer buf = buf_in.createSubBuffer(flags, CL_BUFFER_CREATE_TYPE_REGION, &region, &err);
-        if (err != CL_SUCCESS) {
-            return err;
-        }
-        divided.push_back(buf);
-        region.origin += region.size;
-    }
-
-    return 0;
-}
-
-int enqueue_subbuf_vadd(cl::CommandQueue &q, cl::Kernel &krnl, cl::Event *event, cl::Buffer a, cl::Buffer b, cl::Buffer c)
+int enqueue_buf_vadd(cl::CommandQueue &q, cl::Kernel &krnl, cl::Event *event, cl::Buffer a, cl::Buffer b, cl::Buffer c)
 {
     // Get the size of the buffer
     cl::Event k_event, m_event;
@@ -152,13 +109,10 @@ struct KernelObjects {
     cl::Buffer b_buf;
     cl::Buffer c_buf;
     uint32_t *a, *b, *c;
-	std::vector<cl::Buffer> a_bufs;
-	std::vector<cl::Buffer> b_bufs;
-	std::vector<cl::Buffer> c_bufs;
 
 	cl_mem_ext_ptr_t in_bank_ext;
 	cl::Kernel krnl;
-	std::array<cl::Event, numSubBuffers> kernel_events;
+	cl::Event kernel_event;
 };
 
 
@@ -287,7 +241,7 @@ int main(int argc, char *argv[])
     }
 
 	auto start = std::chrono::high_resolution_clock::now();
-	std::array<cl::Event, numSubBuffers * num_concurrent_kernels > globalKernelEvents;
+	std::array<cl::Event,  num_concurrent_kernels > globalKernelEvents;
 
     for (uint32_t i = 0; i < num_concurrent_kernels; ++i) {
     	auto obj = objects + i;
@@ -296,12 +250,8 @@ int main(int argc, char *argv[])
 			q.enqueueUnmapMemObject(obj->a_buf, obj->a);
 			q.enqueueUnmapMemObject(obj->b_buf, obj->b);
 
-			subdivide_buffer(obj->a_bufs, obj->a_buf, CL_MEM_READ_ONLY| CL_MEM_HOST_WRITE_ONLY, numSubBuffers);
-			subdivide_buffer(obj->b_bufs, obj->b_buf, CL_MEM_READ_ONLY| CL_MEM_HOST_WRITE_ONLY, numSubBuffers);
-			subdivide_buffer(obj->c_bufs, obj->c_buf, CL_MEM_WRITE_ONLY | CL_MEM_HOST_READ_ONLY, numSubBuffers);
-
-			for (int i = 0; i < numSubBuffers; i++)
-				enqueue_subbuf_vadd(q, obj->krnl, &obj->kernel_events[i], obj->a_bufs[i], obj->b_bufs[i], obj->c_bufs[i]);
+			// enqueue kernel
+			enqueue_buf_vadd(q, obj->krnl, &obj->kernel_event, obj->a_buf, obj->b_buf, obj->c_buf);
 
 		}
 		catch (cl::Error &e) {
@@ -312,9 +262,7 @@ int main(int argc, char *argv[])
 
     for (uint32_t i = 0; i < num_concurrent_kernels; ++i) {
     	auto obj = objects + i;
-    	 for (uint32_t j = 0; j < numSubBuffers; ++j) {
-    		 globalKernelEvents[j + i * numSubBuffers] = obj->kernel_events[j].get();
-    	 }
+   		 globalKernelEvents[i] = obj->kernel_event.get();
     }
 
 	clWaitForEvents(globalKernelEvents.size(), (const cl_event *)&globalKernelEvents);
