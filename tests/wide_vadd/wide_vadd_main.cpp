@@ -118,6 +118,13 @@ struct KernelObjects {
 
 int main(int argc, char *argv[])
 {
+	if (argc < 2){
+		printf("too few arguments");
+		exit(0);
+	}
+
+	const char* kernelBinary = argv[1];
+
   	// 1. create device manager
     const int platformId = 0;
     const eDeviceType deviceType = ACCELERATOR;
@@ -147,7 +154,7 @@ int main(int argc, char *argv[])
 	std::stringstream buildOptions;
 	buildOptions << " -I ./ ";
 	KernelInitInfoBase initInfoBase(dev, buildOptions.str(), "",LOAD_BINARY);
-	KernelInitInfo initInfo(initInfoBase, "", "wide_vadd_250HW","");
+	KernelInitInfo initInfo(initInfoBase, "", kernelBinary,"");
 	cl_program program = KernelOCL::generateProgram(initInfo);
 
 
