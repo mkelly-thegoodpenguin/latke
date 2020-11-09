@@ -49,7 +49,7 @@ using namespace ltk;
 #include <omp.h>
 
 
-const uint32_t num_concurrent_kernels = 2;
+const uint32_t num_concurrent_kernels = 4;
 const uint32_t bufferSize = (1024 * 1024 * (8/num_concurrent_kernels));
 std::string kernelName = "wide_vadd";
 
@@ -167,7 +167,7 @@ int main(int argc, char *argv[])
 	//buildOptions << " -D DEBUG";
 
 	KernelInitInfoBase initInfoBase(dev, buildOptions.str(), "",LOAD_BINARY);
-	KernelInitInfo initInfo(initInfoBase, "", "wide_vadd_250HW","");
+	KernelInitInfo initInfo(initInfoBase, "", "wide_vadd","");
 	cl_program program = KernelOCL::generateProgram(initInfo);
 
 

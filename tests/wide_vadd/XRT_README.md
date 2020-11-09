@@ -132,15 +132,15 @@ Simply replace `hw` above with one of these two other modes:
 ##### HW EMU
 
 ```
-$ v++ -t hw_emu --platform xilinx_u250_xdma_201830_2 -c -k wide_vadd -I'./' ./wide_vadd.cpp -o wide_vadd_250HWEMU.xo
-$ v++ -t hw_emu --platform xilinx_u250_xdma_201830_2 --link --config connectivity_u250.cfg wide_vadd_250HWEMU.xo -o'wide_vadd_250HWEMU.xilinx_u250_xdma_201830_2'
+$ v++ -t hw_emu --platform xilinx_u250_xdma_201830_2 -c -k wide_vadd -I'./' -I'/tools/Xilinx/Vivado/2020.1/include/' ./wide_vadd.cpp -o wide_vadd_250HWEMU.xo
+$ v++ -t hw_emu --platform xilinx_u250_xdma_201830_2 --link --config connectivity_u250.cfg  --profile_kernel data:wide_vadd:all:all wide_vadd_250HWEMU.xo -o'wide_vadd_250HWEMU.xilinx_u250_xdma_201830_2'
 ```
 
 ##### SW EMU
 
 ```
-$ v++ -t sw_emu --platform xilinx_u250_xdma_201830_2 -c -k wide_vadd -I'./' ./wide_vadd.cpp -o wide_vadd_250SWEMU.xo
-$ v++ -t sw_emu --platform xilinx_u250_xdma_201830_2 --link --config connectivity_u250.cfg wide_vadd_250SWEMU.xo -o'wide_vadd_250SWEMU.xilinx_u250_xdma_201830_2'
+$ v++ -t sw_emu --platform xilinx_u250_xdma_201830_2 -c -k wide_vadd -I'./' -I'/tools/Xilinx/Vivado/2020.1/include/' ./wide_vadd.cpp -o wide_vadd_250SWEMU.xo
+$ v++ -t sw_emu --platform xilinx_u250_xdma_201830_2 --link --config connectivity_u250.cfg  --profile_kernel data:wide_vadd:all:all wide_vadd_250SWEMU.xo -o'wide_vadd_250SWEMU.xilinx_u250_xdma_201830_2'
 ```
 
 To run the emulation, you will need to generate an `emconfig.json` file:
