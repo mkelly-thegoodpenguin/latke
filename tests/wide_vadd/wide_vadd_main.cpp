@@ -53,7 +53,7 @@ const uint32_t bufferSize = (1024 * 1024 * (8/num_concurrent_kernels));
 std::string kernelName = "wide_vadd";
 
 
-void vadd_sw(uint32_t *a, uint32_t *b, uint32_t *c, uint32_t size){
+void vadd_sw(float *a, float *b, float *c, uint32_t size){
 #pragma omp parallel for
     for (int i = 0; i < size; i++) {
         c[i] = a[i] + b[i];
@@ -86,7 +86,7 @@ int enqueue_buf_vadd(cl::CommandQueue &q, cl::Kernel &krnl, cl::Event *event, cl
     krnl.setArg(0, a);
     krnl.setArg(1, b);
     krnl.setArg(2, c);
-    krnl.setArg(3, (uint32_t)(size / sizeof(uint32_t)));
+    krnl.setArg(3, (uint32_t)(size / sizeof(float)));
 
     q.enqueueTask(krnl, &krnl_events, &k_event);
     krnl_events.push_back(k_event);
@@ -107,7 +107,7 @@ struct KernelObjects {
     cl::Buffer a_buf;
     cl::Buffer b_buf;
     cl::Buffer c_buf;
-    uint32_t *a, *b, *c;
+    float *a, *b, *c;
 
 	cl_mem_ext_ptr_t in_bank_ext;
 	cl::Kernel krnl;
@@ -184,17 +184,17 @@ int main(int argc, char *argv[])
 
 			obj->a_buf = cl::Buffer(ctx,
 							 static_cast<cl_mem_flags>(CL_MEM_READ_ONLY | CL_MEM_HOST_WRITE_ONLY | CL_MEM_EXT_PTR_XILINX),
-							 bufferSize * sizeof(uint32_t),
+							 bufferSize * sizeof(float),
 							 &obj->in_bank_ext,
 							 NULL);
 			obj->b_buf = cl::Buffer(ctx,
 							 static_cast<cl_mem_flags>(CL_MEM_READ_ONLY | CL_MEM_HOST_WRITE_ONLY | CL_MEM_EXT_PTR_XILINX),
-							 bufferSize * sizeof(uint32_t),
+							 bufferSize * sizeof(float),
 							 &obj->in_bank_ext,
 							 NULL);
 			obj->c_buf = cl::Buffer(ctx,
 							 static_cast<cl_mem_flags>(CL_MEM_WRITE_ONLY | CL_MEM_HOST_READ_ONLY | CL_MEM_EXT_PTR_XILINX),
-							 bufferSize * sizeof(uint32_t),
+							 bufferSize * sizeof(float),
 							 &obj->in_bank_ext,
 							 NULL);
 
@@ -205,16 +205,16 @@ int main(int argc, char *argv[])
 			obj->krnl.setArg(1, obj->b_buf);
 			obj->krnl.setArg(2, obj->c_buf);
 
-			obj->a = (uint32_t *)q.enqueueMapBuffer(obj->a_buf,
+			obj->a = (float *)q.enqueueMapBuffer(obj->a_buf,
 														 CL_TRUE,
 														 CL_MAP_WRITE_INVALIDATE_REGION,
 														 0,
-														 bufferSize * sizeof(uint32_t));
-			obj->b = (uint32_t *)q.enqueueMapBuffer(obj->b_buf,
+														 bufferSize * sizeof(float));
+			obj->b = (float *)q.enqueueMapBuffer(obj->b_buf,
 														 CL_TRUE,
 														 CL_MAP_WRITE_INVALIDATE_REGION,
 														 0,
-														 bufferSize * sizeof(uint32_t));
+														 bufferSize * sizeof(float));
 			for (int i = 0; i < bufferSize; i++) {
 				obj->a[i] = i;
 				obj->b[i] = 2 * i;
@@ -257,11 +257,11 @@ int main(int argc, char *argv[])
     	auto obj = objects + i;
 
     	// 1. map output
-    	obj->c = (uint32_t *)q.enqueueMapBuffer(obj->c_buf,
+    	obj->c = (float *)q.enqueueMapBuffer(obj->c_buf,
 													 CL_TRUE,
 													 CL_MAP_READ,
 													 0,
-													 bufferSize * sizeof(uint32_t));
+													 bufferSize * sizeof(float));
 		// 2. process output
 
 		// 3. unmap output

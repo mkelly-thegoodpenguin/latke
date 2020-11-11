@@ -49,6 +49,45 @@ typedef ap_uint<DATAWIDTH> uint512_dt;
 const unsigned int c_chunk_sz = BUFFER_SIZE;
 const unsigned int c_size     = VECTOR_SIZE;
 
+
+template <typename T> // ap_uint or unsigned int can be used
+float uint_to_float(T x) {
+    union {
+        unsigned int i;
+        float f;
+    } conv;
+    conv.i=(unsigned int)x;
+    return conv.f;
+}
+
+unsigned int float_to_uint(float x) {
+    union {
+        unsigned int i;
+        float f;
+    } conv;
+    conv.f=x;
+    return conv.i;
+}
+
+
+template <int W> // hardcoding in this version because float means S=32
+void vadd_as_float( ap_uint<W> a,
+					ap_uint<W> b,
+					ap_uint<W> &res) {
+    // this implicitly unroll the loops
+    const int S =32;
+    #pragma HLS pipeline II=1
+vaddloop:
+    for(int i=0; i<W/S; i++) {
+        res.range( S*(i+1)-1, S*i ) = float_to_uint (
+               uint_to_float(a.range( S*(i+1)-1, S*i ) )
+           +   uint_to_float(b.range( S*(i+1)-1, S*i ) )
+           );
+    }
+}
+
+
+
 /*
     Vector Addition Kernel Implementation using uint512_dt datatype
     Arguments:
@@ -111,9 +150,9 @@ extern "C"
             for (int j = 0; j < chunk_size; j++) {
 #pragma HLS pipeline
 #pragma HLS LOOP_TRIPCOUNT min = 1 max = 64
-                uint512_dt tmpV1 = v1_local[j];
-                uint512_dt tmpV2 = v2_local[j];
-                out[i + j]       = tmpV1 + tmpV2; // Vector Addition Operation
+                auto tmpV1 = v1_local[j];
+                auto tmpV2 = v2_local[j];
+                vadd_as_float(tmpV1, tmpV2, out[i + j]);  // Vector Addition Operation
             }
         }
     }
