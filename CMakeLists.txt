@@ -4,6 +4,8 @@ project (latke)
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+
 find_package(Threads REQUIRED)
 
 add_definitions(-DCL_TARGET_OPENCL_VERSION=220)
