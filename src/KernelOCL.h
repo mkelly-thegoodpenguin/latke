@@ -36,6 +36,11 @@ const uint32_t BUILD_BINARY_OFFLINE_ALL_DEVICES	= 4;
 
 
 struct KernelInitInfoBase {
+	KernelInitInfoBase() : device(nullptr),
+							buildOptions(""),
+							directory(""),
+							binaryBuildMethod(LOAD_BINARY)
+	{}
 	KernelInitInfoBase(DeviceOCL *dev, std::string bldOptions, std::string directory,
 			uint32_t binaryBuildMethod) :
 			device(dev), buildOptions(bldOptions), directory(directory), binaryBuildMethod(
@@ -52,6 +57,11 @@ struct KernelInitInfoBase {
 };
 
 struct KernelInitInfo: KernelInitInfoBase {
+	KernelInitInfo() : KernelInitInfoBase(),
+						programName(""),
+						binaryName(""),
+						kernelName("")
+	{}
 	KernelInitInfo(KernelInitInfoBase initInfo, std::string progName,
 			std::string binaryName, std::string knlName) :
 			KernelInitInfoBase(initInfo), programName(progName), binaryName(
