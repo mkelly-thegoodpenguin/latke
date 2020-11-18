@@ -86,7 +86,7 @@ int enqueue_buf_vadd(cl::CommandQueue &q, cl::Kernel &krnl, cl::Event *event, cl
     krnl.setArg(0, a);
     krnl.setArg(1, b);
     krnl.setArg(2, c);
-    krnl.setArg(3, (uint32_t)(size / sizeof(float)));
+    krnl.setArg(3, (uint32_t)(size));
 
     q.enqueueTask(krnl, &krnl_events, &k_event);
     krnl_events.push_back(k_event);
