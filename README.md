@@ -1,7 +1,6 @@
 # Latke
 
-A small set of C++ wrapper classes designed to make it easier to do
-efficient batch image processing with OpenCL.
+A small set of C++ wrapper classes for efficient batch image processing using OpenCL.
 
 [![badge-license]][link-license]
 
