@@ -47,7 +47,7 @@ using namespace ltk;
 // OpenMP
 #include <omp.h>
 
-const uint32_t num_concurrent_kernels = 4;
+const uint32_t num_concurrent_kernels = 1;
 // number of 32-bit items in kernel buffer
 const uint32_t bufferSize = (1024 * 1024 * (8/num_concurrent_kernels));
 std::string kernelName = "wide_vadd";
@@ -267,11 +267,11 @@ int main(int argc, char *argv[])
 		// 3. unmap output
 		q.enqueueUnmapMemObject(obj->c_buf, obj->c);
     }
-    q.finish();
-
 	auto finish = std::chrono::high_resolution_clock::now();
 	std::chrono::duration<double> elapsed = finish - start;
 	std::cout << "Execution time " <<  (elapsed.count() * 1000.0) << " ms per buffer" << std::endl;
+
+    q.finish();
 
     if (program)
     	clReleaseProgram(program);
