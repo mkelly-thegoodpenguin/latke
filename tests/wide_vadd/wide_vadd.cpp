@@ -71,11 +71,11 @@ unsigned int float_to_uint(float x) {
 
 
 template <int W> // hardcoding in this version because float means S=32
-void vadd_as_float( ap_uint<W> a,
-					ap_uint<W> b,
-					ap_uint<W> &res) {
+ap_uint<W>  vadd_as_float( ap_uint<W> a,
+					ap_uint<W> b) {
     // this implicitly unroll the loops
     const int S =32;
+    ap_uint<W> res;
     #pragma HLS pipeline II=1
 vaddloop:
     for(int i=0; i<W/S; i++) {
@@ -84,6 +84,8 @@ vaddloop:
            +   uint_to_float(b.range( S*(i+1)-1, S*i ) )
            );
     }
+
+    return res;
 }
 
 
@@ -115,7 +117,7 @@ extern "C"
 #pragma HLS INTERFACE s_axilite port = return bundle = control
 
         uint512_dt v1_local[BUFFER_SIZE]; // Local memory to store vector1
-        uint512_dt v2_local[BUFFER_SIZE];
+        uint512_dt v2_local[BUFFER_SIZE];  // Local memory to store vector2
         uint512_dt result_local[BUFFER_SIZE]; // Local Memory to store result
 
         // Input vector size for integer vectors. However kernel is directly
@@ -129,14 +131,14 @@ extern "C"
 #pragma HLS DATAFLOW
 #pragma HLS stream variable = v1_local depth = 64
 #pragma HLS stream variable = v2_local depth = 64
-
+#pragma HLS stream variable = result_local depth = 64
             int chunk_size = BUFFER_SIZE;
 
             //boundary checks
             if ((i + BUFFER_SIZE) > size_in16)
                 chunk_size = size_in16 - i;
 
-        //burst read first vector from global memory to local memory
+        //burst read to local memory
         v1_rd:
             for (int j = 0; j < chunk_size; j++) {
 #pragma HLS pipeline
@@ -145,15 +147,23 @@ extern "C"
                 v2_local[j] = in2[i + j];
             }
 
-        //burst read second vector and perform vector addition
-        v2_rd_add:
+        //perform vector addition
+        v2_add:
             for (int j = 0; j < chunk_size; j++) {
 #pragma HLS pipeline
 #pragma HLS LOOP_TRIPCOUNT min = 1 max = 64
                 auto tmpV1 = v1_local[j];
                 auto tmpV2 = v2_local[j];
-                vadd_as_float(tmpV1, tmpV2, out[i + j]);  // Vector Addition Operation
+                result_local[j] = vadd_as_float(tmpV1, tmpV2);
             }
+
+		//burst write to global memory
+		v1_write:
+			for (int j = 0; j < chunk_size; j++) {
+#pragma HLS pipeline
+#pragma HLS LOOP_TRIPCOUNT min = 1 max = 64
+				out[i+j] = result_local[j];
+			}
         }
     }
 }
