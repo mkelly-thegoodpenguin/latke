@@ -100,70 +100,58 @@ vaddloop:
    */
 extern "C"
 {
-    void wide_vadd(
+void wide_vadd(
         const uint512_dt *in1, // Read-Only Vector 1
         const uint512_dt *in2, // Read-Only Vector 2
         uint512_dt *out,       // Output Result
         int size               // Size in integer
     )
     {
-#pragma HLS INTERFACE m_axi port = in1 max_write_burst_length = 32 max_read_burst_length = 32 offset = slave bundle = gmem
-#pragma HLS INTERFACE m_axi port = in2 max_read_burst_length = 32 offset = slave bundle = gmem1
-#pragma HLS INTERFACE m_axi port = out max_write_burst_length = 32 max_read_burst_length = 32 offset = slave bundle = gmem2
+#pragma HLS INTERFACE m_axi depth=8192 port=in1 max_read_burst_length=32 offset=slave bundle=gmem
+#pragma HLS INTERFACE m_axi depth=8192 port = in2 max_read_burst_length = 32 offset = slave bundle = gmem1
+#pragma HLS INTERFACE m_axi depth=8192 port = out max_write_burst_length = 32 max_read_burst_length = 32 offset = slave bundle = gmem2
 #pragma HLS INTERFACE s_axilite port = in1 bundle = control
 #pragma HLS INTERFACE s_axilite port = in2 bundle = control
 #pragma HLS INTERFACE s_axilite port = out bundle = control
 #pragma HLS INTERFACE s_axilite port = size bundle = control
 #pragma HLS INTERFACE s_axilite port = return bundle = control
 
-        uint512_dt v1_local[BUFFER_SIZE]; // Local memory to store vector1
-        uint512_dt v2_local[BUFFER_SIZE];  // Local memory to store vector2
-        uint512_dt result_local[BUFFER_SIZE]; // Local Memory to store result
+	uint512_dt v1_local[BUFFER_SIZE]; // Local memory to store vector1
+	uint512_dt v2_local[BUFFER_SIZE];  // Local memory to store vector2
+	uint512_dt result_local[BUFFER_SIZE]; // Local Memory to store result
 
-        // Input vector size for integer vectors. However kernel is directly
-        // accessing 512bit data (total 16 elements). So total number of read
-        // from global memory is calculated here:
-        int size_in16 = (size - 1) / VECTOR_SIZE + 1;
+#pragma HLS stream variable = v1_local depth = 4
+#pragma HLS stream variable = v2_local depth = 4
+#pragma HLS stream variable = result_local depth = 4
 
-        //Per iteration of this loop perform BUFFER_SIZE vector addition
-        for (int i = 0; i < size_in16; i += BUFFER_SIZE) {
-//#pragma HLS PIPELINE
+	// Input vector size for integer vectors. However kernel is directly
+	// accessing 512bit data (total 16 elements). So total number of read
+	// from global memory is calculated here:
+	int size_in16 = (size - 1) / VECTOR_SIZE + 1;
+
 #pragma HLS DATAFLOW
-#pragma HLS stream variable = v1_local depth = 64
-#pragma HLS stream variable = v2_local depth = 64
-#pragma HLS stream variable = result_local depth = 64
-            int chunk_size = BUFFER_SIZE;
 
-            //boundary checks
-            if ((i + BUFFER_SIZE) > size_in16)
-                chunk_size = size_in16 - i;
-
-        //burst read to local memory
-        v1_rd:
-            for (int j = 0; j < chunk_size; j++) {
+	//burst read to local memory
+	v1_rd:
+		for (int j = 0; j < size_in16; j++) {
 #pragma HLS pipeline
-#pragma HLS LOOP_TRIPCOUNT min = 1 max = 64
-                v1_local[j] = in1[i + j];
-                v2_local[j] = in2[i + j];
-            }
+			v1_local[j] = in1[j];
+			v2_local[j] = in2[j];
+		}
 
-        //perform vector addition
-        v2_add:
-            for (int j = 0; j < chunk_size; j++) {
+	//perform vector addition
+	v2_add:
+		for (int j = 0; j < size_in16; j++) {
 #pragma HLS pipeline
-#pragma HLS LOOP_TRIPCOUNT min = 1 max = 64
-                auto tmpV1 = v1_local[j];
-                auto tmpV2 = v2_local[j];
-                result_local[j] = vadd_as_float(tmpV1, tmpV2);
-            }
+			auto tmpV1 = v1_local[j];
+			auto tmpV2 = v2_local[j];
+			result_local[j] = vadd_as_float(tmpV1, tmpV2);
+		}
 
-		//burst write to global memory
-		v1_write:
-			for (int j = 0; j < chunk_size; j++) {
+	//burst write to global memory
+	v1_write:
+		for (int j = 0; j < size_in16; j++) {
 #pragma HLS pipeline
-#pragma HLS LOOP_TRIPCOUNT min = 1 max = 64
-				out[i+j] = result_local[j];
-			}
-        }
-    }
+			out[j] = result_local[j];
+		}
 }
