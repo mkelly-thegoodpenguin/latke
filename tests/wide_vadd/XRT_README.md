@@ -93,11 +93,20 @@ $ sudo apt install g++-10
 $ sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-10 50
 
 $ sudo apt install valgrind
-
 $ sudo snap install cmake --classic
-
 $ sudo apt install libomp-dev
+$ cd latke && mkdir build && cd build && cmake .. -DXILINX=ON
+$ make -j48
 
+```
+
+Note: Make sure that cmake settings point to correct Vivado and XRT include directories.
+Default values are:
+
+```
+VIVADO_INCLUDE_DIR       "/tools/Xilinx/Vivado/2020.1/include/"
+XRT_INCLUDE_DIR          "/opt/xilinx/xrt/include/"
+```
 
 #### Build/Run Kernel
 
@@ -109,7 +118,9 @@ $ v++ -t hw --platform xilinx_u250_xdma_201830_2 --link --config connectivity_u2
 
 ```
 
-Now copy `wide_vadd_HW.xilinx_u250_xdma_201830_2` xclbin binary to latke build directory, and run `wide_vadd` executable.
+Now copy `wide_vadd_HW.xilinx_u250_xdma_201830_2` xclbin binary to latke build directory, and run `wide_vadd` executable:
+
+$ ./wide_vadd wide_vadd_HW
 
 
 ### Profiling

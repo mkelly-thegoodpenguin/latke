@@ -13,14 +13,18 @@ add_definitions(-DCL_USE_DEPRECATED_OPENCL_1_2_APIS=1)
 
 set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
 
+option(XILINX "Support Xilinx XRT" OFF)
+if (XILINX)
+set(VIVADO_INCLUDE_DIR "/tools/Xilinx/Vivado/2020.1/include/" CACHE STRING "Vivado Include Directory")
+set(XRT_INCLUDE_DIR "/opt/xilinx/xrt/include/" CACHE STRING "XRT Include Directory")
+include_directories(${VIVADO_INCLUDE_DIR} ${XRT_INCLUDE_DIR})
+endif (XILINX)
+
 find_package(OpenCL REQUIRED)
-include_directories(${OPENCL_INCLUDE_DIRS} src tests/include /tools/Xilinx/Vivado/2020.1/include/ /opt/xilinx/xrt/include/)
+include_directories(${OPENCL_INCLUDE_DIRS} src tests/include)
 
 # Install directories
 include(GNUInstallDirs)
-
-option(XILINX "Support Xilinx XRT" OFF)
-
 
 # Defines the source code for the library
 add_library(latke STATIC
