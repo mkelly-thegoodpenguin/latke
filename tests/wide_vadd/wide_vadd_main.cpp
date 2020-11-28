@@ -33,6 +33,7 @@ EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <sstream>
 #include <string>
 #include <chrono>
+#include <stdexcept>
 
 #define CL_HPP_ENABLE_EXCEPTIONS
 #define CL_HPP_CL_1_2_DEFAULT_BUILD
@@ -154,7 +155,17 @@ int main(int argc, char *argv[])
 	buildOptions << " -I ./ ";
 	KernelInitInfoBase initInfoBase(dev, buildOptions.str(), "",LOAD_BINARY);
 	KernelInitInfo initInfo(initInfoBase, "", kernelBinary,"");
-	cl_program program = KernelOCL::generateProgram(initInfo);
+	cl_program program = 0;
+	try {
+		program = KernelOCL::generateProgram(initInfo);
+		if (!program){
+			std::cerr << "Failed to generate program";
+			return -1;
+		}
+	} catch (std::exception &ex){
+		std::cerr << "Failed to generate program";
+		return -1;
+	}
 
 
     // Map our user-allocated buffers as OpenCL buffers using a shared
