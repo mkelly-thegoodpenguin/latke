@@ -154,4 +154,5 @@ void wide_vadd(
 #pragma HLS pipeline
 			out[j] = result_local[j];
 		}
+    }
 }
