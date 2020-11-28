@@ -48,8 +48,10 @@ const int deviceNum = 0;
 template<typename M, typename A> int Debayer<M, A>::debayer(int argc,
 		char *argv[], pfn_event_notify HostToDeviceMappedCallback,
 		pfn_event_notify DeviceToHostMappedCallback, std::string kernelFile) {
-	if (argc < 2)
+	if (argc < 2) {
+		std::cerr << "Input image missing";
 		return -1;
+	}
 
 	BlockingQueue<uint8_t*> availableBuffers;
 	std::string fileName = argv[1];
