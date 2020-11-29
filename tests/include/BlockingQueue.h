@@ -59,6 +59,12 @@ public:
 		_condition.wait(lk, [this] {return !_active || !_queue.empty();});
 		return pop(value);
 	}
+	size_t size(){
+		return _queue.size();
+	}
+	bool empty() {
+		return _queue.empty();
+	}
 private:
 	bool pop(Data &value) {
 		if (_queue.empty())

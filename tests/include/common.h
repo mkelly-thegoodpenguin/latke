@@ -19,6 +19,23 @@
 
 #pragma once
 
+#ifdef _WIN32
+#include "windirent.h"
+#define strcasecmp _stricmp
+#define strncasecmp _strnicmp
+#else
+#include <dirent.h>
+#include <strings.h>
+#include <sys/time.h>
+#include <sys/resource.h>
+#include <sys/times.h>
+#include <unistd.h>
+#include <signal.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#endif /* _WIN32 */
+
 #include <iostream>
 #include <sstream>
 #include "latke.h"
@@ -55,6 +72,7 @@ template<typename M> struct JobInfo {
 	MemMapEvents<M> *hostToDevice;
 	cl_event kernelCompleted;
 	MemMapEvents<M> *deviceToHost;
+	std::string fileName;
 
 	JobInfo *prev;
 };
