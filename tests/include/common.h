@@ -33,6 +33,9 @@
 #include "stb_image_write.h"
 #include <string>
 #include "ThreadPool.h"
+#define TCLAP_NAMESTARTSTRING "-"
+#include "tclap/CmdLine.h"
+using namespace TCLAP;
 
 using namespace ltk;
 
