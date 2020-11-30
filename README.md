@@ -27,5 +27,21 @@ must have access to these files. These `.cl` files are copied to the build folde
 must be run from this folder.  
 
 
+### Building
+
+This project uses `cmake` to manage its build.
+
+
+#### Dependencies
+
+The binaries depend on an OpenCL 1.2 runtime.
+
+For Intel CPUs, an [OpenCL driver](https://software.intel.com/content/www/us/en/develop/articles/opencl-drivers.html) can be installed.
+For Intel iGPUs on Linux, the Intel [comput runtime])https://github.com/intel/compute-runtime) may be used.
+And, for AMD GPUs on Linux, [ROCm](https://github.com/RadeonOpenCompute/ROCm) may be used.
+
+Note: NVidia cards are not supported due to poor OpenCL 1.2 support.
+
+
 [badge-license]: https://img.shields.io/badge/License-LGPL%20v2-blue.svg "LGPL v2"
 [link-license]: https://github.com/GrokImageCompression/latke/blob/master/COPYING "LGPLv2"
