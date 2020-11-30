@@ -4,14 +4,15 @@ A small set of C++ wrapper classes for efficient batch image processing using Op
 
 [![badge-license]][link-license]
 
-## Tests
+## Test Applications
 
 ### Debayer
 
 The test binaries `debayer_buffer` and `debayer_image` convert a Bayer mosaic raw image to RGB(A),
-using either OpenCL buffers or OpenCL images. 
+using either OpenCL buffers or OpenCL images.
 
-To run the programs, pass in the file name of the raw file, and optionally the bayer pattern from
+To run the programs, pass in an input directory with the raw images, an output directory to store
+the debayered images, and optionally the bayer pattern from
 
 `{RGGB,GRBG,GBRG,BGGR} `
 
@@ -19,7 +20,7 @@ To run the programs, pass in the file name of the raw file, and optionally the b
 
 Example:
 
-`$ debayer_buffer FOO.png BGGR`
+`$ debayer_buffer -i /home/FOO  -o /home/BAR  BGGR`
 
 Note: the opencl kernel '.cl' files must be compiled at runtime to create the kernel binaries, so the test binary
 must have access to these files. These `.cl` files are copied to the build folder, so the test binary
