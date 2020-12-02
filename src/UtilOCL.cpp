@@ -36,7 +36,7 @@
 #include <windows.h>
 #else
 #include <sys/time.h>
-#include <linux/limits.h>
+#include <limits.h>
 #include <unistd.h>
 #endif
 

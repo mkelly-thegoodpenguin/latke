@@ -18,6 +18,7 @@
  */
 #pragma once
 #include "common.h"
+#include <cmath>
 
 // template struct to handle debayer to either image or buffer
 template<typename M, typename A> struct Debayer {

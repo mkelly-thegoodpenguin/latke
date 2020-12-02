@@ -20,7 +20,13 @@
 #pragma once
 #include "latke_config.h"
 #ifdef OPENCL_FOUND
-#include "CL/cl.h"
+
+#if defined(__APPLE__) || defined(__MACOSX)
+#include <OpenCL/cl.h>
+#else
+#include <CL/cl.h>
+#endif
+
 #include "QueueOCL.h"
 
 

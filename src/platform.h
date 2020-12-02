@@ -19,7 +19,13 @@
 
 #pragma once
 #ifdef OPENCL_FOUND
+
+#if defined(__APPLE__) || defined(__MACOSX)
+#include <OpenCL/cl.h>
+#else
 #include <CL/cl.h>
+#endif
+
 #include <string>
 #include "DeviceOCL.h"
 
