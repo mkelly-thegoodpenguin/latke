@@ -144,8 +144,8 @@ int main(int argc, char *argv[])
 	    std::cerr << "Unsupported OpenCL vendor ID " << dev->deviceInfo->venderId;
 	    return -1;
 	}
-    cl::Context ctx = cl::Context(dev->context);
-    cl::CommandQueue q = cl::CommandQueue(dev->queue);
+    cl::Context ctx = cl::Context(dev->context, true);
+    cl::CommandQueue q = cl::CommandQueue(dev->queue, true);
 
     std::cout << std::endl << std::endl;
     std::cout << "Running kernel test with XRT-allocated contiguous buffers" << std::endl;
@@ -187,7 +187,7 @@ int main(int argc, char *argv[])
 	    		return -1;
 	    	}
 
-	        obj->krnl = cl::Kernel(kernel->getKernel());
+	        obj->krnl = cl::Kernel(kernel->getKernel(), true);
 
 	    	obj->in_bank_ext.flags = i | XCL_MEM_TOPOLOGY;
 			obj->in_bank_ext.obj   = NULL;
