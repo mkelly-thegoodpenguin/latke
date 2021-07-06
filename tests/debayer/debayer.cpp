@@ -23,9 +23,9 @@
 // template struct to handle debayer to either image or buffer
 template<typename M, typename A> struct Debayer {
 	int debayer(int argc, char *argv[],
-			pfn_event_notify HostToDeviceMappedCallback,
-			pfn_event_notify DeviceToHostMappedCallback,
-			std::string kernelFile);
+		    pfn_event_notify HostToDeviceMappedCallback,
+		    pfn_event_notify DeviceToHostMappedCallback,
+		    std::string kernelFile);
 	BlockingQueue<JobInfo<M>*> mappedHostToDeviceQueue;
 	BlockingQueue<JobInfo<M>*> mappedDeviceToHostQueue;
 };
@@ -35,8 +35,8 @@ enum pattern_t {
 };
 
 const int numCLBuffers = 4;
-const int numPostProcBuffers = 16;
-const int tile_rows = 5;
+const int numPostProcBuffers = 8;
+const int tile_rows = 4;
 const int tile_columns = 32;
 const int platformId = 0;
 const eDeviceType deviceType = GPU;
@@ -45,27 +45,33 @@ const int deviceNum = 0;
 inline char separator()
 {
 #ifdef _WIN32
-    return '\\';
+	return '\\';
 #else
-    return '/';
+	return '/';
 #endif
 }
 
+std::string remove_extension(const std::string& filename) {
+    size_t lastdot = filename.find_last_of(".");
+    if (lastdot == std::string::npos) return filename;
+    return filename.substr(0, lastdot); 
+}
+
 template<typename M, typename A> int Debayer<M, A>::debayer(int argc,
-		char *argv[], pfn_event_notify HostToDeviceMappedCallback,
-		pfn_event_notify DeviceToHostMappedCallback, std::string kernelFile) {
+							    char *argv[], pfn_event_notify HostToDeviceMappedCallback,
+							    pfn_event_notify DeviceToHostMappedCallback, std::string kernelFile) {
 
 
 	CmdLine cmd("debayer command line", ' ',"v1.0");
 
 	ValueArg<std::string> inputDirArg("i", "input-dir", "Input Image Directory", false,
-			"", "string", cmd);
+					  "", "string", cmd);
 
 	ValueArg<std::string> outputDirArg("o", "output-dir", "Output Image Directory", false,
-			"", "string", cmd);
+					   "", "string", cmd);
 
 	ValueArg<std::string> patternArg("p", "pattern", "Bayer Pattern", false,
-			"", "string", cmd);
+					 "", "string", cmd);
 
 	cmd.parse(argc, argv);
 
@@ -89,22 +95,33 @@ template<typename M, typename A> int Debayer<M, A>::debayer(int argc,
 	struct dirent *content = nullptr;
 	std::string inputFile;
 	BlockingQueue<std::string> imageQueue;
+	BlockingQueue<std::chrono::duration<double>> timeQueue;
 	while ((content = readdir(dir)) != nullptr) {
 		if (strcmp(".", content->d_name) == 0
-				|| strcmp("..", content->d_name) == 0)
+		    || strcmp("..", content->d_name) == 0)
 			continue;
 		inputFile = content->d_name;
 		imageQueue.push(content->d_name);
 	}
 	closedir(dir);
-	uint32_t numImages = (imageQueue.size()/numCLBuffers) * numCLBuffers;
-	int numBatches = numImages / numCLBuffers;
+	if (imageQueue.size() == 0) {
+		std::cerr << "No Images found in " << inputDir;
+		return -1;
+	}
+	
+	uint32_t numImages = imageQueue.size();
+	int numBatches = (numImages / numCLBuffers);
+	if ( (numBatches*numCLBuffers) < numImages)
+		numBatches++;
+
+	fprintf(stdout, "Found %d files. Will process in %d batches\n",
+		numImages, numBatches);
 
 	// read first image in to get image dimensions
 	int width = 0, height = 0, channels = 0;
 	std::string inputFileFull = inputDir + separator() + inputFile.c_str();
 	auto image = stbi_load(inputFileFull.c_str(), &width, &height, &channels,
-			STBI_default);
+			       STBI_default);
 	if (!image) {
 		std::cerr << "Failed to read image file " << inputFile;
 		return -1;
@@ -140,7 +157,7 @@ template<typename M, typename A> int Debayer<M, A>::debayer(int argc,
 		postProcBuffers[i] = new uint8_t[frameSizeOut];
 		availableBuffers.push(postProcBuffers[i]);
 	}
-  cl_command_queue_properties queue_props = CL_QUEUE_OUT_OF_ORDER_EXEC_MODE_ENABLE;
+	cl_command_queue_properties queue_props = CL_QUEUE_OUT_OF_ORDER_EXEC_MODE_ENABLE;
 
 	// 1. create device manager
 	auto deviceManager = std::make_shared<DeviceManagerOCL>(true);
@@ -154,8 +171,8 @@ template<typename M, typename A> int Debayer<M, A>::debayer(int argc,
 
 	auto arch = ArchFactory::getArchitecture(dev->deviceInfo->venderId);
 	if (!arch){
-	    std::cerr << "Unsupported OpenCL vendor ID " << dev->deviceInfo->venderId;
-	    return -1;
+		std::cerr << "Unsupported OpenCL vendor ID " << dev->deviceInfo->venderId;
+		return -1;
 	}
 
 	std::shared_ptr<M> hostToDevice[numCLBuffers];
@@ -169,20 +186,20 @@ template<typename M, typename A> int Debayer<M, A>::debayer(int argc,
 	buildOptions << " -D TILE_ROWS=" << tile_rows;
 	buildOptions << " -D TILE_COLS=" << tile_columns;
 	switch (arch->getVendorId()) {
-		case vendorIdAMD:
-			buildOptions << " -D AMD_GPU_ARCH";
-			break;
-		case vendorIdNVD:
-			buildOptions << " -D NVIDIA_ARCH";
-			break;
-		case vendorIdXILINX:
-			buildOptions << "";
-			break;
-    case vendorIdINTL:
-      buildOptions << "";
-      break;
-		default:
-			return -1;
+	case vendorIdAMD:
+		buildOptions << " -D AMD_GPU_ARCH";
+		break;
+	case vendorIdNVD:
+		buildOptions << " -D NVIDIA_ARCH";
+		break;
+	case vendorIdXILINX:
+		buildOptions << "";
+		break;
+	case vendorIdINTL:
+		buildOptions << "";
+		break;
+	default:
+		return -1;
 
 	}
 	buildOptions << " -D OUTPUT_CHANNELS=" << bps_out;
@@ -190,9 +207,9 @@ template<typename M, typename A> int Debayer<M, A>::debayer(int argc,
 	//buildOptions << " -D DEBUG";
 
 	KernelInitInfoBase initInfoBase(dev, buildOptions.str(), "",
-	BUILD_BINARY_IN_MEMORY);
+					BUILD_BINARY_IN_MEMORY);
 	KernelInitInfo initInfo(initInfoBase, kernelFile, "debayer",
-			"malvar_he_cutler_demosaic");
+				"malvar_he_cutler_demosaic");
 	std::shared_ptr<KernelOCL> kernel;
 	try {
 		kernel = std::make_unique<KernelOCL>(initInfo);
@@ -203,6 +220,7 @@ template<typename M, typename A> int Debayer<M, A>::debayer(int argc,
 
 	A allocator(dev, bufferWidth, bufferHeight, 1, CL_UNSIGNED_INT8, queue_props);
 	A allocatorOut(dev, bufferWidth, bufferHeight, 4, CL_UNSIGNED_INT8, queue_props);
+	// If we have less than numCLBuffers, we don't need to over allocate?
 	for (int i = 0; i < numCLBuffers; ++i) {
 		hostToDevice[i] = allocator.allocate(true);
 		deviceToHost[i] = allocatorOut.allocate(false);
@@ -212,37 +230,43 @@ template<typename M, typename A> int Debayer<M, A>::debayer(int argc,
 	}
 
 	// queue all kernel runs
+	// Need to fix the number of loops. so that it works out how many full loops, and
+	// how many remaining ones.
 	for (int j = 0; j < numBatches; j++) {
-		for (int i = 0; i < numCLBuffers; ++i) {
+		int maxCLBuffers = numCLBuffers;
+		if (((j*maxCLBuffers)+maxCLBuffers) > numImages) {
+			maxCLBuffers = numImages-(j*numCLBuffers);
+		}
+		for (int i = 0; i < maxCLBuffers; ++i) {
 			bool lastBatch = j == numBatches - 1;
 			auto prev = currentJobInfo[i];
 			currentJobInfo[i] = new JobInfo<M>(dev, hostToDevice[i],
-												deviceToHost[i], prevJobInfo[i]);
+							   deviceToHost[i], prevJobInfo[i]);
 			prevJobInfo[i] = prev;
 
 			// map
 			// (wait for previous kernel to complete)
 			cl_event hostToDeviceMapped;
 			if (!hostToDevice[i]->map(prev ? 1 : 0,
-										prev ? &prev->kernelCompleted : nullptr,
-										&hostToDeviceMapped, false)) {
+						  prev ? &prev->kernelCompleted : nullptr,
+						  &hostToDeviceMapped, false)) {
 				return -1;
 			}
 			// set callback, which will add this image
 			// info to host-side queue of mapped buffers
 			auto error_code = clSetEventCallback(hostToDeviceMapped,
-			CL_COMPLETE, HostToDeviceMappedCallback, currentJobInfo[i]);
+							     CL_COMPLETE, HostToDeviceMappedCallback, currentJobInfo[i]);
 			if (DeviceSuccess != error_code) {
 				Util::LogError("Error: clSetEventCallback returned %s.\n",
-						Util::TranslateOpenCLError(error_code));
+					       Util::TranslateOpenCLError(error_code));
 				return -1;
 			}
 			Util::ReleaseEvent(hostToDeviceMapped);
 
 			// unmap
 			if (!hostToDevice[i]->unmap(1,
-										&currentJobInfo[i]->hostToDevice->triggerMemUnmap,
-										&currentJobInfo[i]->hostToDevice->memUnmapped)) {
+						    &currentJobInfo[i]->hostToDevice->triggerMemUnmap,
+						    &currentJobInfo[i]->hostToDevice->memUnmapped)) {
 				return -1;
 			}
 
@@ -259,11 +283,11 @@ template<typename M, typename A> int Debayer<M, A>::debayer(int argc,
 			info.local_work_size[0] = tile_columns;
 			info.local_work_size[1] = tile_rows;
 			info.global_work_size[0] = (size_t) std::ceil(
-					bufferWidth / (double) tile_columns)
-					* info.local_work_size[0];
+				bufferWidth / (double) tile_columns)
+				* info.local_work_size[0];
 			info.global_work_size[1] = (size_t) std::ceil(
-					bufferHeight / (double) tile_rows)
-					* info.local_work_size[1];
+				bufferHeight / (double) tile_rows)
+				* info.local_work_size[1];
 			info.needsCompletionEvent = true;
 			info.pushWaitEvent(currentJobInfo[i]->hostToDevice->memUnmapped);
 			// wait for unmapping of previous deviceToHost
@@ -279,17 +303,17 @@ template<typename M, typename A> int Debayer<M, A>::debayer(int argc,
 			// map
 			cl_event deviceToHostMapped;
 			if (!deviceToHost[i]->map(1, &currentJobInfo[i]->kernelCompleted,
-					&deviceToHostMapped, false)) {
+						  &deviceToHostMapped, false)) {
 				return -1;
 			}
 			// set callback on mapping
 			error_code = clSetEventCallback(deviceToHostMapped,
-											CL_COMPLETE,
-											DeviceToHostMappedCallback,
-											currentJobInfo[i]);
+							CL_COMPLETE,
+							DeviceToHostMappedCallback,
+							currentJobInfo[i]);
 			if (DeviceSuccess != error_code) {
 				Util::LogError("Error: clSetEventCallback returned %s.\n",
-						Util::TranslateOpenCLError(error_code));
+					       Util::TranslateOpenCLError(error_code));
 				return -1;
 			}
 			Util::ReleaseEvent(deviceToHostMapped);
@@ -297,8 +321,8 @@ template<typename M, typename A> int Debayer<M, A>::debayer(int argc,
 			// unmap (except last batch)
 			if (!lastBatch) {
 				if (!deviceToHost[i]->unmap(1,
-											&currentJobInfo[i]->deviceToHost->triggerMemUnmap,
-											&currentJobInfo[i]->deviceToHost->memUnmapped)) {
+							    &currentJobInfo[i]->deviceToHost->triggerMemUnmap,
+							    &currentJobInfo[i]->deviceToHost->memUnmapped)) {
 					return -1;
 				}
 			}
@@ -306,25 +330,29 @@ template<typename M, typename A> int Debayer<M, A>::debayer(int argc,
 	}
 
 	// wait for cl memory objects from queue, fill them, and trigger unmap event
-	auto start = std::chrono::high_resolution_clock::now();
-	std::thread pushImages([this, frameSize, numImages, &imageQueue, inputDir]() {
-		JobInfo<M> *info = nullptr;
-		int count = 0;
-		while (mappedHostToDeviceQueue.waitAndPop(info)) {
-			std::string fname;
-			imageQueue.waitAndPop(fname);
-			info->fileName = fname;
-			int width = 0, height = 0, channels = 0;
-			fname = inputDir + separator() + fname;
-			auto image = stbi_load(fname.c_str(), &width, &height, &channels,	STBI_default);
-			memcpy(info->hostToDevice->mem->getHostBuffer(), image, frameSize);
-			stbi_image_free(image);
-			// trigger unmap, allowing current kernel to proceed
-			Util::SetEventComplete(info->hostToDevice->triggerMemUnmap);
-			if (++count == numImages)
-				break;
-		}
-	});
+	auto start = std::chrono::high_resolution_clock::now();		
+	std::thread pushImages([this, frameSize, numImages, &imageQueue, &timeQueue, inputDir]() {
+				       JobInfo<M> *info = nullptr;
+				       int count = 0;
+				       while (mappedHostToDeviceQueue.waitAndPop(info)) {
+					       std::string fname;
+					       imageQueue.waitAndPop(fname);
+					       info->fileName = fname;
+					       int width = 0, height = 0, channels = 0;
+					       fname = inputDir + separator() + fname;
+					       auto io_start = std::chrono::high_resolution_clock::now();
+					       auto image = stbi_load(fname.c_str(), &width, &height, &channels,	STBI_default);
+					       memcpy(info->hostToDevice->mem->getHostBuffer(), image, frameSize);
+					       stbi_image_free(image);
+					       auto io_stop = std::chrono::high_resolution_clock::now();
+					       std::chrono::duration<double> io_sum = (io_stop - io_start);
+					       timeQueue.push(io_sum);
+					       // trigger unmap, allowing current kernel to proceed
+					       Util::SetEventComplete(info->hostToDevice->triggerMemUnmap);
+					       if (++count == numImages)
+						       break;
+				       }
+			       });
 
 	// wait for processed images from queue, handle them,
 	// and trigger unmap event
@@ -332,42 +360,47 @@ template<typename M, typename A> int Debayer<M, A>::debayer(int argc,
 	std::condition_variable postCondition;
 	auto postProcPool = new ThreadPool(std::thread::hardware_concurrency());
 	std::thread pullImages([this, frameSizeOut, &postProcPool, bufferWidth, bufferHeight,
-							bps_out, &availableBuffers, outputDir, numImages,
-							&postCondition, &postMutex]() {
-		JobInfo<M> *info = nullptr;
-		int pullCount;
-		std::atomic<int> postCount(0);
-		while (mappedDeviceToHostQueue.waitAndPop(info)) {
-			uint8_t *buf;
-			if (availableBuffers.waitAndPop(buf)) {
-				memcpy(buf, info->deviceToHost->mem->getHostBuffer(),frameSizeOut);
-				auto evt = [buf, bufferWidth, bufferHeight,
-							bps_out, &availableBuffers, info, outputDir, numImages,
-							&postCondition, &postMutex, &postCount] {
-					std::stringstream f;
-					f << outputDir << separator() << info->fileName << ".png";
-					stbi_write_png(f.str().c_str(), bufferWidth, bufferHeight, bps_out,buf, bufferWidth*bps_out);
-					availableBuffers.push(buf);
-					if (++postCount == numImages){
-						std::lock_guard<std::mutex> lk(postMutex);
-						postCondition.notify_one();
-					}
-				};
-				postProcPool->enqueue(evt);
-			} else {
-				std::cout << "mappedDeviceToHostQueue failed" << std::endl;
-			}
-			// trigger unmap, allowing next kernel to proceed
-			Util::SetEventComplete(info->deviceToHost->triggerMemUnmap);
+				bps_out, &availableBuffers, outputDir, numImages,
+				&postCondition, &timeQueue, &postMutex]() {
+				       JobInfo<M> *info = nullptr;
+				       int pullCount;
+				       std::atomic<int> postCount(0);
+				       while (mappedDeviceToHostQueue.waitAndPop(info)) {
+					       uint8_t *buf;
+					       if (availableBuffers.waitAndPop(buf)) {
+						       memcpy(buf, info->deviceToHost->mem->getHostBuffer(),frameSizeOut);
+						       auto evt = [buf, bufferWidth, bufferHeight,
+								   bps_out, &availableBuffers, info, outputDir, numImages,
+								   &postCondition, &timeQueue, &postMutex, &postCount] {
+									  std::stringstream f;
+									  // PNG output, remove existing extension
+									  f << outputDir << separator() << remove_extension(info->fileName) << ".png";
+									  auto io_start = std::chrono::high_resolution_clock::now();
+									  stbi_write_png(f.str().c_str(), bufferWidth, bufferHeight, bps_out,buf, bufferWidth*bps_out);
+									  auto io_stop = std::chrono::high_resolution_clock::now();
+									  std::chrono::duration<double> io_sum = (io_stop - io_start);
+									  timeQueue.push(io_sum);
+									  availableBuffers.push(buf);
+									  if (++postCount == numImages){
+										  std::lock_guard<std::mutex> lk(postMutex);
+										  postCondition.notify_one();
+									  }
+								  };
+						       postProcPool->enqueue(evt);
+					       } else {
+						       std::cout << "mappedDeviceToHostQueue failed" << std::endl;
+					       }
+					       // trigger unmap, allowing next kernel to proceed
+					       Util::SetEventComplete(info->deviceToHost->triggerMemUnmap);
 
-			// cleanup
-			delete info->prev;
-			info->prev = nullptr;
-			if (++pullCount == numImages){
-				break;
-			}
-		}
-	});
+					       // cleanup
+					       delete info->prev;
+					       info->prev = nullptr;
+					       if (++pullCount == numImages){
+						       break;
+					       }
+				       }
+			       });
 	std::unique_lock<std::mutex> lk(postMutex);
 	postCondition.wait(lk);
 	auto finish = std::chrono::high_resolution_clock::now();
@@ -379,14 +412,45 @@ template<typename M, typename A> int Debayer<M, A>::debayer(int argc,
 	delete postProcPool;
 	for (int i = 0; i < numPostProcBuffers; ++i)
 		delete[] postProcBuffers[i];
-	for (int i = 0; i < numCLBuffers; ++i) {
-		deviceToHost[i]->unmap(0, nullptr, nullptr);
-		delete currentJobInfo[i]->prev;
-		delete currentJobInfo[i];
+	// MPK Only unmap the number used in the last batch
+	int maxCLBuffers = numCLBuffers;
+	if ((((numBatches-1)*maxCLBuffers)+maxCLBuffers) > numImages) {
+		maxCLBuffers = numImages-((numBatches-1)*numCLBuffers);
+		fprintf(stdout, "Cleaning up %d deviceToHost buffers\n",
+				maxCLBuffers);
+	}
+	for (int i = 0; i < maxCLBuffers; ++i) {
+		if (deviceToHost[i]->getHostBuffer())
+			deviceToHost[i]->unmap(0, nullptr, nullptr);
+		if (currentJobInfo[i]) {
+			if (currentJobInfo[i]->prev)
+				delete currentJobInfo[i]->prev;
+			delete currentJobInfo[i];
+		}
 	}
 	delete arch;
+	// Need to get io times
+
+	std::chrono::duration<double> io_total;
+	while (!timeQueue.empty()) {
+		std::chrono::duration<double> io_time;
+		timeQueue.waitAndPop(io_time);
+		io_total = io_total + io_time;
+	}
+
+	fprintf(stdout, "Total processing time = %f ms\n",
+		elapsed.count()*1000);
+
 	fprintf(stdout, "opencl processing time per image = %f ms\n",
-			(elapsed.count() * 1000) / (double) numImages);
+		(elapsed.count() * 1000) / (double) numImages);
+
+	fprintf(stdout, "Total IO processing time (Threaded) = %f ms\n",
+		io_total.count()*1000);
+	
+	fprintf(stdout, "opencl processing time per image (without IO) = %f ms\n",
+		( (elapsed.count() * 1000) -
+		  ((io_total.count()*1000)/ (double) numImages)) / (double) numImages);
+		
 
 	return 0;
 }
