@@ -64,7 +64,7 @@ if("${CMAKE_SIZEOF_VOID_P}" EQUAL "8")
         $ENV{AMDAPPSDKROOT}/lib
         $ENV{CUDA_PATH}/lib
         DOC "OpenCL dynamic library path"
-        PATH_SUFFIXES x86_64 x64 x86_64/sdk
+        PATH_SUFFIXES x86_64 x64 x86_64/sdk x86_64-linux-gnu
         PATHS
         /usr/lib
         /usr/local/cuda/lib
