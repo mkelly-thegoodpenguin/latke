@@ -40,3 +40,7 @@ _ReSharper*/
 #Nuget packages folder
 packages/
 /build/
+
+# Local data
+/test_in*
+/output*
