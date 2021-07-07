@@ -3,7 +3,8 @@ project (latke)
 set(CMAKE_BUILD_TYPE Debug)
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-
+#set(CMAKE_EXPORT_COMPILE_COMMANDS ON CACHE INTERNAL "")
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 find_package(Threads REQUIRED)
@@ -21,7 +22,11 @@ include_directories(${VIVADO_INCLUDE_DIR} ${XRT_INCLUDE_DIR})
 endif (XILINX)
 
 find_package(OpenCL REQUIRED)
-include_directories(${OPENCL_INCLUDE_DIRS} src tests/include)
+
+# Hack for eclipse usage
+find_path(STDIO_INCLUDE_PATH stdio.h)
+#include_directories("${STDIO_INCLUDE_PATH}/dummy/../")
+include_directories(${OPENCL_INCLUDE_DIRS} src tests/include "${STDIO_INCLUDE_PATH}/dummy/../")
 
 # Install directories
 include(GNUInstallDirs)
