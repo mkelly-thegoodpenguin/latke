@@ -19,6 +19,7 @@
 #pragma once
 #include "common.h"
 #include <cmath>
+#include <sys/mman.h>
 
 // template struct to handle debayer to either image or buffer
 template<typename M, typename A> struct Debayer {
@@ -73,11 +74,19 @@ template<typename M, typename A> int Debayer<M, A>::debayer(int argc,
 	ValueArg<std::string> patternArg("p", "pattern", "Bayer Pattern", false,
 					 "", "string", cmd);
 
+	ValueArg<int> bbpArg("b", "bpp", "Bits Per Pixel", false,
+						 5, "integer", cmd);
+
+	ValueArg<std::string> sizeArg("s", "size", "Raw Image Size (widthxheight)", false,
+							 "", "string", cmd);
+
+	SwitchArg  rawSwitch("r","raw","Imputfiles are raw data",cmd, false);
+
 	cmd.parse(argc, argv);
 
 
 	if (!inputDirArg.isSet()) {
-		std::cerr << "Required image directory missing";
+		std::cerr << "Required image directory missing" << endl;
 		return -1;
 	}
 
@@ -89,7 +98,7 @@ template<typename M, typename A> int Debayer<M, A>::debayer(int argc,
 	// set up directory iterator
 	auto dir = opendir(inputDir.c_str());
 	if (!dir) {
-		std::cerr << "Unable to open image directory " << inputDir;
+		std::cerr << "Unable to open image directory " << inputDir << endl;
 		return -1;
 	}
 	struct dirent *content = nullptr;
@@ -105,7 +114,7 @@ template<typename M, typename A> int Debayer<M, A>::debayer(int argc,
 	}
 	closedir(dir);
 	if (imageQueue.size() == 0) {
-		std::cerr << "No Images found in " << inputDir;
+		std::cerr << "No Images found in " << inputDir << endl;
 		return -1;
 	}
 	
@@ -117,16 +126,65 @@ template<typename M, typename A> int Debayer<M, A>::debayer(int argc,
 	fprintf(stdout, "Found %d files. Will process in %d batches\n",
 		numImages, numBatches);
 
-	// read first image in to get image dimensions
+	// Check if we're raw mode when doing
+	// Image size checks
+
 	int width = 0, height = 0, channels = 0;
-	std::string inputFileFull = inputDir + separator() + inputFile.c_str();
-	auto image = stbi_load(inputFileFull.c_str(), &width, &height, &channels,
-			       STBI_default);
-	if (!image) {
-		std::cerr << "Failed to read image file " << inputFile;
-		return -1;
+	int bytesPerSampleIn = 1, bytesPerSampleOut = 4;
+	bool isRaw = rawSwitch.getValue();
+	if (isRaw) {
+		// Calculate image size
+		if (!sizeArg.isSet()) {
+			std::cerr << "Raw mode specified, but no image size" << endl;
+			return -1;
+		}
+		std::string imageSize = sizeArg.getValue();
+		// In case user uses x or *
+		if (imageSize.find("*")!=std::string::npos)
+		    imageSize.replace( imageSize.find("*"), 1,1, 'x');
+
+		if (std::string::npos==imageSize.find("x")) {
+			std::cerr << "Raw mode specified, but image size makes no sense :" <<imageSize.c_str() << endl;
+			return -1;
+		}
+
+		width = stoi(imageSize.substr(0, imageSize.find("x")).c_str());
+		height = stoi(imageSize.substr(imageSize.find("x")+1, std::string::npos ).c_str());
+		channels = 1; // Grayscale type data
+		// Need to work out how many bytes there are fo rthe bits per pixel.
+		// We mostly work with 8bits per channel or 16 bits per channel
+		bytesPerSampleOut = 4; //default 32bit output 8:8:8:8(alpha)
+		bytesPerSampleIn = 1; //default 8bit per chan
+		if (bbpArg.isSet()) {
+			int bbp = bbpArg.getValue();
+			if (bbp == 16) {
+				bytesPerSampleOut = 8; // 64bit output 16:16:16:16(alpha)
+				bytesPerSampleIn = 2; // 16bit input
+			} else if (bbp==8) {
+				bytesPerSampleOut = 4; // 32bit output 8:8:8:8(alpha)
+				bytesPerSampleIn = 1; // 8bit input
+			} else {
+				std::cerr << "Raw mode specified, bbp is a crazy value of" << bbp << endl;
+				std::cerr << "8 or 16 are the only currently supported values" << bbp << endl;
+				return -1;
+			}
+		}
+
+
+	} else {
+		// read first image in to get image dimensions
+		// Read datra is 8bits per channel
+		std::string inputFileFull = inputDir + separator() + inputFile.c_str();
+		auto image = stbi_load(inputFileFull.c_str(), &width, &height, &channels,
+				STBI_default);
+		if (!image) {
+			std::cerr << "Failed to read image file " << inputFile << endl;
+			return -1;
+		}
+		stbi_image_free(image);
+		bytesPerSampleOut = 4; // 32bit output 8:8:8:8(alpha)
+		bytesPerSampleIn = 1; // 8bit input
 	}
-	stbi_image_free(image);
 
 	uint32_t bufferWidth = width;
 	uint32_t bufferHeight = height;
@@ -145,12 +203,17 @@ template<typename M, typename A> int Debayer<M, A>::debayer(int argc,
 			std::cout << "Unrecognized bayer pattern " << patt << ". Using RGGB." << std::endl;
 	}
 
-	uint32_t bps_out = 4;
-	uint32_t bufferPitch = bufferWidth;
+	uint32_t bps_out = bytesPerSampleOut; // bytes per sample
+	uint32_t bps_in = bytesPerSampleIn; // bytes per sample
+	uint32_t bufferPitch = bufferWidth * bps_in;
 	uint32_t frameSize = bufferPitch * bufferHeight;
 	uint32_t bufferPitchOut = bufferWidth * bps_out;
 	uint32_t frameSizeOut = bufferPitchOut * bufferHeight;
 
+	fprintf(stdout, "info: Input FrameSize : %u bytes\n",frameSize);
+	fprintf(stdout, "info: output FrameSize: %u bytes\n",frameSizeOut);
+
+	// Create and queue output buffers
 	uint8_t *postProcBuffers[numPostProcBuffers];
 	BlockingQueue<uint8_t*> availableBuffers;
 	for (int i = 0; i < numPostProcBuffers; ++i) {
@@ -163,15 +226,15 @@ template<typename M, typename A> int Debayer<M, A>::debayer(int argc,
 	auto deviceManager = std::make_shared<DeviceManagerOCL>(true);
 	auto success = deviceManager->init(platformId, deviceType, deviceNum, true, queue_props);
 	if (success != DeviceSuccess) {
-		std::cerr << "Failed to initialize OpenCL device";
+		std::cerr << "Failed to initialize OpenCL device" << endl;
 		return -1;
 	}
 
 	auto dev = deviceManager->getDevice(deviceNum);
-
+	// FIXME: Add the iMx8's ID to teh archFactory
 	auto arch = ArchFactory::getArchitecture(dev->deviceInfo->venderId);
 	if (!arch){
-		std::cerr << "Unsupported OpenCL vendor ID " << dev->deviceInfo->venderId;
+		std::cerr << "Unsupported OpenCL vendor ID " << dev->deviceInfo->venderId << endl;
 		return -1;
 	}
 
@@ -185,6 +248,7 @@ template<typename M, typename A> int Debayer<M, A>::debayer(int argc,
 	buildOptions << " -I ./ ";
 	buildOptions << " -D TILE_ROWS=" << tile_rows;
 	buildOptions << " -D TILE_COLS=" << tile_columns;
+	// FIXME: Add the iMx8's ID to teh archFactory
 	switch (arch->getVendorId()) {
 	case vendorIdAMD:
 		buildOptions << " -D AMD_GPU_ARCH";
@@ -202,7 +266,9 @@ template<typename M, typename A> int Debayer<M, A>::debayer(int argc,
 		return -1;
 
 	}
+	// Pass but in and out sizes to the kernel
 	buildOptions << " -D OUTPUT_CHANNELS=" << bps_out;
+	buildOptions << " -D INPUT_CHANNELS=" << bps_in;
 	buildOptions << arch->getBuildOptions();
 	//buildOptions << " -D DEBUG";
 
@@ -218,12 +284,13 @@ template<typename M, typename A> int Debayer<M, A>::debayer(int argc,
 		return -1;
 	}
 
-	A allocator(dev, bufferWidth, bufferHeight, 1, CL_UNSIGNED_INT8, queue_props);
-	A allocatorOut(dev, bufferWidth, bufferHeight, 4, CL_UNSIGNED_INT8, queue_props);
-	// If we have less than numCLBuffers, we don't need to over allocate?
+	// The two allocators, for in and out, use the correct bytes per sample
+	A allocator(dev, bufferWidth, bufferHeight, bps_in, CL_UNSIGNED_INT8, queue_props);
+	A allocatorOut(dev, bufferWidth, bufferHeight, bps_out, CL_UNSIGNED_INT8, queue_props);
+
 	for (int i = 0; i < numCLBuffers; ++i) {
-		hostToDevice[i] = allocator.allocate(true);
-		deviceToHost[i] = allocatorOut.allocate(false);
+		hostToDevice[i] = allocator.allocate(true); // true = hostToDevice
+		deviceToHost[i] = allocatorOut.allocate(false); // false - deviceToHost
 		kernelQueue[i] = std::make_unique<QueueOCL>(dev,queue_props);
 		currentJobInfo[i] = nullptr;
 		prevJobInfo[i] = nullptr;
@@ -331,7 +398,7 @@ template<typename M, typename A> int Debayer<M, A>::debayer(int argc,
 
 	// wait for cl memory objects from queue, fill them, and trigger unmap event
 	auto start = std::chrono::high_resolution_clock::now();		
-	std::thread pushImages([this, frameSize, numImages, &imageQueue, &timeQueue, inputDir]() {
+	std::thread pushImages([this, frameSize, numImages, &imageQueue, &timeQueue, inputDir, isRaw]() {
 				       JobInfo<M> *info = nullptr;
 				       int count = 0;
 				       while (mappedHostToDeviceQueue.waitAndPop(info)) {
@@ -341,9 +408,21 @@ template<typename M, typename A> int Debayer<M, A>::debayer(int argc,
 					       int width = 0, height = 0, channels = 0;
 					       fname = inputDir + separator() + fname;
 					       auto io_start = std::chrono::high_resolution_clock::now();
-					       auto image = stbi_load(fname.c_str(), &width, &height, &channels,	STBI_default);
-					       memcpy(info->hostToDevice->mem->getHostBuffer(), image, frameSize);
-					       stbi_image_free(image);
+					       // MPK Added the raw mode, just read the data
+					       if (isRaw) {
+						   int fd = open(fname.c_str(), O_RDONLY);
+						   if(fd > 0){
+						       read(fd,info->hostToDevice->mem->getHostBuffer(), frameSize);
+						       close(fd);
+						   } else {
+						       std::cerr << "Failed to open()" << fname.c_str() << endl;
+						   }
+					       } else {
+						   auto image = stbi_load(fname.c_str(), &width, &height, &channels,	STBI_default);
+						   memcpy(info->hostToDevice->mem->getHostBuffer(), image, frameSize);
+						   stbi_image_free(image);
+					       }
+
 					       auto io_stop = std::chrono::high_resolution_clock::now();
 					       std::chrono::duration<double> io_sum = (io_stop - io_start);
 					       timeQueue.push(io_sum);
@@ -361,7 +440,7 @@ template<typename M, typename A> int Debayer<M, A>::debayer(int argc,
 	auto postProcPool = new ThreadPool(std::thread::hardware_concurrency());
 	std::thread pullImages([this, frameSizeOut, &postProcPool, bufferWidth, bufferHeight,
 				bps_out, &availableBuffers, outputDir, numImages,
-				&postCondition, &timeQueue, &postMutex]() {
+				&postCondition, &timeQueue, &postMutex, isRaw]() {
 				       JobInfo<M> *info = nullptr;
 				       int pullCount;
 				       std::atomic<int> postCount(0);
@@ -371,12 +450,26 @@ template<typename M, typename A> int Debayer<M, A>::debayer(int argc,
 						       memcpy(buf, info->deviceToHost->mem->getHostBuffer(),frameSizeOut);
 						       auto evt = [buf, bufferWidth, bufferHeight,
 								   bps_out, &availableBuffers, info, outputDir, numImages,
-								   &postCondition, &timeQueue, &postMutex, &postCount] {
+								   &postCondition, &timeQueue, &postMutex, &postCount, isRaw] {
 									  std::stringstream f;
-									  // PNG output, remove existing extension
-									  f << outputDir << separator() << remove_extension(info->fileName) << ".png";
 									  auto io_start = std::chrono::high_resolution_clock::now();
-									  stbi_write_png(f.str().c_str(), bufferWidth, bufferHeight, bps_out,buf, bufferWidth*bps_out);
+									  // MPK Adding raw output
+									  if (isRaw) {
+									      f << outputDir << separator() << remove_extension(info->fileName) << ".raw";
+									      mode_t mode = S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH;
+									      int fd = open(f.str().c_str(), O_WRONLY|O_CREAT|O_TRUNC, mode);
+									      if(fd > 0){
+										  write(fd, buf, bufferHeight*bufferWidth*bps_out);
+										  close(fd);
+									      } else {
+										  std::cerr << "Failed to create output file :" << f.str().c_str();
+									      }
+
+									  } else {
+									  // PNG output, remove existing extension
+									      f << outputDir << separator() << remove_extension(info->fileName) << ".png";
+									      stbi_write_png(f.str().c_str(), bufferWidth, bufferHeight, bps_out,buf, bufferWidth*bps_out);
+									  }
 									  auto io_stop = std::chrono::high_resolution_clock::now();
 									  std::chrono::duration<double> io_sum = (io_stop - io_start);
 									  timeQueue.push(io_sum);
