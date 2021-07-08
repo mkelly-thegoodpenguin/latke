@@ -142,13 +142,14 @@ void malvar_he_cutler_demosaic(const uint im_rows, const uint im_cols,
 
 	// MPK Debugging
 
-	//	if ((g_r == 0) && (g_c == 0)) {
-	//	  printf( (__constant char *)"input_image_pitch = %u\n" , input_image_pitch);	  
-	//	  printf( (__constant char *)"output_image_pitch = %u\n" , output_image_pitch);
-	//	  printf( (__constant char *)"im_rows = %u\n" , im_rows);
-	//	  printf( (__constant char *)"im_cols = %u\n" , im_cols);
-	//	  printf( (__constant char *)"sizeof(PixelT) = %u\n" , sizeof(PixelT));
-	//	}
+	// if ((g_r == 0) && (g_c == 0)) {
+	//   printf( (__constant char *)"input_image_pitch = %u\n" , input_image_pitch);	  
+	//   printf( (__constant char *)"output_image_pitch = %u\n" , output_image_pitch);
+	//   printf( (__constant char *)"im_rows = %u\n" , im_rows);
+	//   printf( (__constant char *)"im_cols = %u\n" , im_cols);
+	//   printf( (__constant char *)"sizeof(PixelT) = %u\n" , sizeof(PixelT));
+	//   printf( (__constant char *)"sizeof(PixelT) = %u\n" , sizeof(RGBPixelT));
+	// }
 	//	if ((tile_row_block == 0) && (tile_col_block == 0)) {
 	//	  printf((__constant char *)"apron[%d][%d] := %x\n" , apron_read_row, apron_read_col, apron[apron_read_row][apron_read_col]);
 	//	}
@@ -267,8 +268,8 @@ void malvar_he_cutler_demosaic(const uint im_rows, const uint im_cols,
 #endif
 
        	pixel_at(RGBPixelT, output_image, g_r, g_c) = output;
-	if ( (g_r == 0) && ( (g_c == 1919) || (g_c == 4) ) ) {
-	  printf((__constant char *)PIXELTFMT , pixel_at(RGBPixelT, output_image, g_r, g_c));
-	}
+	// if ( (g_r == 0) && ( (g_c == 1919) || (g_c == 4) ) ) {
+	//   printf((__constant char *)PIXELTFMT , pixel_at(RGBPixelT, output_image, g_r, g_c));
+	// }
     }
 }

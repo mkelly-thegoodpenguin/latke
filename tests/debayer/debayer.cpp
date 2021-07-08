@@ -204,10 +204,10 @@ template<typename M, typename A> int Debayer<M, A>::debayer(int argc,
 
 	uint32_t bps_out = samplesPerPixelOut; // bytes per sample
 	uint32_t bps_in = samplesPerPixelIn; // bytes per sample
-	uint32_t bufferPitch = bufferWidth * bps_in;
-	uint32_t frameSize = bufferPitch * bufferHeight * bytesPerSample;
-	uint32_t bufferPitchOut = bufferWidth * bps_out;
-	uint32_t frameSizeOut = bufferPitchOut * bufferHeight * bytesPerSample;
+	uint32_t bufferPitch = bufferWidth * bps_in  * bytesPerSample;
+	uint32_t frameSize = bufferPitch * bufferHeight;
+	uint32_t bufferPitchOut = bufferWidth * bps_out * bytesPerSample;
+	uint32_t frameSizeOut = bufferPitchOut * bufferHeight ;
 
 	fprintf(stdout, "info: Input FrameSize : %u bytes\n",frameSize);
 	fprintf(stdout, "info: output FrameSize: %u bytes\n",frameSizeOut);
