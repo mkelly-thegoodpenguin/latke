@@ -51,11 +51,21 @@
 #endif
 
 #ifndef ALPHA_VALUE
+#if defined(BPP_16BIT)
+#define ALPHA_VALUE USHRT_MAX
+#else
 #define ALPHA_VALUE UCHAR_MAX
+#endif
 #endif
 
 #ifndef PIXELT
+#if defined(BPP_16BIT)
+#define PIXELT ushort
+#define PIXELTFMT "%#v4hx\n"
+#else
 #define PIXELT uchar
+#define PIXELTFMT "%#v4hhx\n"
+#endif
 #endif
 
 #ifndef RGBPIXELBASET

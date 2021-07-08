@@ -80,18 +80,19 @@ INLINE uint2 tex2D(const int rows, const int cols, const int _c, const int _r,
 	assert_val(c >= 0 && c < cols, c);
 	return (uint2)(r, c);
 }
-
-INLINE __global uchar* image_line_at_(__global uchar *im_p, const uint im_rows, const uint im_cols, const uint image_pitch_p, const uint r) {
+// MPK Modified this to cope with pixels that are non uchar, so take into account pixel size when doing (r * image pitch_p)
+INLINE __global uchar* image_line_at_(__global uchar *im_p, const uint im_rows, const uint im_cols, const uint image_pitch_p, const uint r, const uint sizeof_pixel) {
 	assert_val(r >= 0 && r < im_rows, r);
 	(void) im_cols;
-	return im_p + r * image_pitch_p;
+	return im_p + (r * image_pitch_p * sizeof_pixel);
 }
-#define image_line_at(PixelT, im_p, im_rows, im_cols, image_pitch, r) ((__global PixelT *) image_line_at_((__global uchar *) (im_p), (im_rows), (im_cols), (image_pitch), (r)))
+#define image_line_at(PixelT, im_p, im_rows, im_cols, image_pitch, r) ((__global PixelT *) image_line_at_((__global uchar *) (im_p), (im_rows), (im_cols), (image_pitch), (r), sizeof(PixelT) ))
 
+// MPK Modified this to cope with pixels that are non uchar, so take into account pixel size when doing (r * image pitch_p)
 INLINE __global uchar* image_pixel_at_(__global uchar *im_p, const uint im_rows, const uint im_cols, const uint image_pitch_p, const uint r, const uint c, const uint sizeof_pixel) {
 	assert_val(r >= 0 && r < im_rows, r);
 	assert_val(c >= 0 && c < im_cols, c);
-	return im_p + r * image_pitch_p + c * sizeof_pixel;
+	return im_p + (r * image_pitch_p * sizeof_pixel) + c * sizeof_pixel;
 }
 #define image_pixel_at(PixelT, im_p, im_rows, im_cols, image_pitch, r, c) (*((__global PixelT *) image_pixel_at_((__global uchar *)(im_p), (im_rows), (im_cols), (image_pitch), (r), (c), sizeof(PixelT))))
 
