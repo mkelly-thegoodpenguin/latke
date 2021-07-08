@@ -37,7 +37,7 @@ enum pattern_t {
 
 const int numCLBuffers = 4;
 const int numPostProcBuffers = 8;
-const int tile_rows = 4;
+const int tile_rows = 5;
 const int tile_columns = 32;
 const int platformId = 0;
 const eDeviceType deviceType = GPU;
@@ -130,7 +130,7 @@ template<typename M, typename A> int Debayer<M, A>::debayer(int argc,
 	// Image size checks
 
 	int width = 0, height = 0, channels = 0;
-	int bytesPerSampleIn = 1, bytesPerSampleOut = 4;
+	int samplesPerPixelIn = 1, samplesPerPixelOut = 4, bytesPerSample = 1;
 	bool isRaw = rawSwitch.getValue();
 	if (isRaw) {
 		// Calculate image size
@@ -153,16 +153,15 @@ template<typename M, typename A> int Debayer<M, A>::debayer(int argc,
 		channels = 1; // Grayscale type data
 		// Need to work out how many bytes there are fo rthe bits per pixel.
 		// We mostly work with 8bits per channel or 16 bits per channel
-		bytesPerSampleOut = 4; //default 32bit output 8:8:8:8(alpha)
-		bytesPerSampleIn = 1; //default 8bit per chan
+		samplesPerPixelOut = 4; //default rgba
+		samplesPerPixelIn = 1; //default grayscale
+		bytesPerSample = 1; // 8bits per sample
 		if (bbpArg.isSet()) {
 			int bbp = bbpArg.getValue();
 			if (bbp == 16) {
-				bytesPerSampleOut = 8; // 64bit output 16:16:16:16(alpha)
-				bytesPerSampleIn = 2; // 16bit input
+				bytesPerSample = 2; // 16bit input
 			} else if (bbp==8) {
-				bytesPerSampleOut = 4; // 32bit output 8:8:8:8(alpha)
-				bytesPerSampleIn = 1; // 8bit input
+				bytesPerSample = 1; // 8bit input
 			} else {
 				std::cerr << "Raw mode specified, bbp is a crazy value of" << bbp << endl;
 				std::cerr << "8 or 16 are the only currently supported values" << bbp << endl;
@@ -182,8 +181,8 @@ template<typename M, typename A> int Debayer<M, A>::debayer(int argc,
 			return -1;
 		}
 		stbi_image_free(image);
-		bytesPerSampleOut = 4; // 32bit output 8:8:8:8(alpha)
-		bytesPerSampleIn = 1; // 8bit input
+		samplesPerPixelOut = 4; //default rgba
+		samplesPerPixelIn = 1; //default grayscale
 	}
 
 	uint32_t bufferWidth = width;
@@ -203,12 +202,12 @@ template<typename M, typename A> int Debayer<M, A>::debayer(int argc,
 			std::cout << "Unrecognized bayer pattern " << patt << ". Using RGGB." << std::endl;
 	}
 
-	uint32_t bps_out = bytesPerSampleOut; // bytes per sample
-	uint32_t bps_in = bytesPerSampleIn; // bytes per sample
+	uint32_t bps_out = samplesPerPixelOut; // bytes per sample
+	uint32_t bps_in = samplesPerPixelIn; // bytes per sample
 	uint32_t bufferPitch = bufferWidth * bps_in;
-	uint32_t frameSize = bufferPitch * bufferHeight;
+	uint32_t frameSize = bufferPitch * bufferHeight * bytesPerSample;
 	uint32_t bufferPitchOut = bufferWidth * bps_out;
-	uint32_t frameSizeOut = bufferPitchOut * bufferHeight;
+	uint32_t frameSizeOut = bufferPitchOut * bufferHeight * bytesPerSample;
 
 	fprintf(stdout, "info: Input FrameSize : %u bytes\n",frameSize);
 	fprintf(stdout, "info: output FrameSize: %u bytes\n",frameSizeOut);
@@ -267,8 +266,12 @@ template<typename M, typename A> int Debayer<M, A>::debayer(int argc,
 
 	}
 	// Pass but in and out sizes to the kernel
-	buildOptions << " -D OUTPUT_CHANNELS=" << bps_out;
-	buildOptions << " -D INPUT_CHANNELS=" << bps_in;
+	if (bytesPerSample == 2) {
+	    buildOptions << " -D OUTPUT_CHANNELS=" << samplesPerPixelOut;
+	    buildOptions << " -D BPP_16BIT";
+	} else { // WIll be 3 or 4 depending */
+	    buildOptions << " -D OUTPUT_CHANNELS=" << samplesPerPixelOut;
+	}
 	buildOptions << arch->getBuildOptions();
 	//buildOptions << " -D DEBUG";
 
@@ -285,8 +288,8 @@ template<typename M, typename A> int Debayer<M, A>::debayer(int argc,
 	}
 
 	// The two allocators, for in and out, use the correct bytes per sample
-	A allocator(dev, bufferWidth, bufferHeight, bps_in, CL_UNSIGNED_INT8, queue_props);
-	A allocatorOut(dev, bufferWidth, bufferHeight, bps_out, CL_UNSIGNED_INT8, queue_props);
+	A allocator(dev, bufferWidth, bufferHeight, bps_in*bytesPerSample, CL_UNSIGNED_INT8, queue_props);
+	A allocatorOut(dev, bufferWidth, bufferHeight, bps_out*bytesPerSample, CL_UNSIGNED_INT8, queue_props);
 
 	for (int i = 0; i < numCLBuffers; ++i) {
 		hostToDevice[i] = allocator.allocate(true); // true = hostToDevice
@@ -439,7 +442,7 @@ template<typename M, typename A> int Debayer<M, A>::debayer(int argc,
 	std::condition_variable postCondition;
 	auto postProcPool = new ThreadPool(std::thread::hardware_concurrency());
 	std::thread pullImages([this, frameSizeOut, &postProcPool, bufferWidth, bufferHeight,
-				bps_out, &availableBuffers, outputDir, numImages,
+				bps_out, bytesPerSample, &availableBuffers, outputDir, numImages,
 				&postCondition, &timeQueue, &postMutex, isRaw]() {
 				       JobInfo<M> *info = nullptr;
 				       int pullCount;
@@ -449,7 +452,7 @@ template<typename M, typename A> int Debayer<M, A>::debayer(int argc,
 					       if (availableBuffers.waitAndPop(buf)) {
 						       memcpy(buf, info->deviceToHost->mem->getHostBuffer(),frameSizeOut);
 						       auto evt = [buf, bufferWidth, bufferHeight,
-								   bps_out, &availableBuffers, info, outputDir, numImages,
+								   bps_out, bytesPerSample, &availableBuffers, info, outputDir, numImages,
 								   &postCondition, &timeQueue, &postMutex, &postCount, isRaw] {
 									  std::stringstream f;
 									  auto io_start = std::chrono::high_resolution_clock::now();
@@ -459,7 +462,7 @@ template<typename M, typename A> int Debayer<M, A>::debayer(int argc,
 									      mode_t mode = S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH;
 									      int fd = open(f.str().c_str(), O_WRONLY|O_CREAT|O_TRUNC, mode);
 									      if(fd > 0){
-										  write(fd, buf, bufferHeight*bufferWidth*bps_out);
+										  write(fd, buf, bufferHeight*bufferWidth*bps_out*bytesPerSample);
 										  close(fd);
 									      } else {
 										  std::cerr << "Failed to create output file :" << f.str().c_str();
