@@ -113,8 +113,14 @@ void malvar_he_cutler_demosaic(const uint im_rows, const uint im_cols,
     const uint g_r = get_global_id(1);
     const bool valid_pixel_task = (g_r < im_rows) & (g_c < im_cols);
 
+    // This is local memory to all work items in the work group.
     __local LDSPixelT apron[apron_rows][apron_cols];
 
+    // Loop copying some items of the image into local memory,
+    // accross all work items in the group it basically copies
+    // blaock that is 2 rows and 2 colums bigger in each direction.
+    // each work item copies 2 pixels (some do 3, but not many)
+    // Data is offset by shalf-ksize in x and y, and then bigger by 4 rows/cols
     const uint tile_flat_id = tile_row * tile_cols + tile_col;
     for(uint apron_fill_task_id = tile_flat_id; apron_fill_task_id < n_apron_fill_tasks; apron_fill_task_id += n_tile_pixels){
         const uint apron_read_row = apron_fill_task_id / apron_cols;
@@ -123,7 +129,22 @@ void malvar_he_cutler_demosaic(const uint im_rows, const uint im_cols,
         const int ag_r = ((int)(apron_read_row + tile_row_block * tile_row_blocksize)) - shalf_ksize;
 
         apron[apron_read_row][apron_read_col] = tex2D_at(PixelT, input_image, ag_r, ag_c);
+
+	// MPK Debugging
+
+	//	if ((g_r == 0) && (g_c == 0)) {
+	//	  printf( (__constant char *)"input_image_pitch = %u\n" , input_image_pitch);	  
+	//	  printf( (__constant char *)"output_image_pitch = %u\n" , output_image_pitch);
+	//	  printf( (__constant char *)"im_rows = %u\n" , im_rows);
+	//	  printf( (__constant char *)"im_cols = %u\n" , im_cols);
+	//	  printf( (__constant char *)"sizeof(PixelT) = %u\n" , sizeof(PixelT));
+	//	}
+	//	if ((tile_row_block == 0) && (tile_col_block == 0)) {
+	//	  printf((__constant char *)"apron[%d][%d] := %x\n" , apron_read_row, apron_read_col, apron[apron_read_row][apron_read_col]);
+	//	}
+
     }
+    // Sync across work group
     barrier(CLK_LOCAL_MEM_FENCE);
     
     //valid tasks read from [half_ksize, (tile_rows|tile_cols) + kernel_size - 1)
@@ -222,15 +243,22 @@ void malvar_he_cutler_demosaic(const uint im_rows, const uint im_cols,
     //at R locations: symmetric 4,2,-1
     //at B locations: symmetric 4,2,-1
     const RGBPixelBaseT G = output_pixel_cast(Fij * is_green_pixel + G_at_red_or_blue * (!is_green_pixel));
-    
+	
     if(valid_pixel_task){
+
 #if OUTPUT_CHANNELS == 3
-        const RGBPixelT output = (RGBPixelT)(R, G, B);
+      const RGBPixelT output = (RGBPixelT)(R, G, B);
+
 #elif OUTPUT_CHANNELS == 4
-        const RGBPixelT output = (RGBPixelT)(R, G, B, ALPHA_VALUE);
+      const RGBPixelT output = (RGBPixelT)(R, G, B, ALPHA_VALUE);
+
 #else
 #error "Unsupported number of output channels"
 #endif
+
        	pixel_at(RGBPixelT, output_image, g_r, g_c) = output;
+	if ( (g_r == 0) && ( (g_c == 1919) || (g_c == 4) ) ) {
+	  printf((__constant char *)PIXELTFMT , pixel_at(RGBPixelT, output_image, g_r, g_c));
+	}
     }
 }
