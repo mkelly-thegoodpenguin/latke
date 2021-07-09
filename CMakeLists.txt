@@ -92,3 +92,6 @@ target_link_libraries(wide_vadd latke ${OPENCL_LIBRARIES} Threads::Threads)
 endif()
 
 
+install (TARGETS debayer_buffer DESTINATION local/bin)
+install (FILES ${CLFiles} DESTINATION local/bin)
+
