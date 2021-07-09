@@ -58,7 +58,7 @@ mark_as_advanced( OPENCL_INCLUDE_DIRS )
 
 if("${CMAKE_SIZEOF_VOID_P}" EQUAL "8")
     find_library( OPENCL_LIBRARIES
-        NAMES OpenCL
+        NAMES libOpenCL.so.3 libOpenCL.so.2 libOpenCL.so.1
         HINTS
         ${OPENCL_ROOT}/lib
         $ENV{AMDAPPSDKROOT}/lib
@@ -66,6 +66,7 @@ if("${CMAKE_SIZEOF_VOID_P}" EQUAL "8")
         DOC "OpenCL dynamic library path"
         PATH_SUFFIXES x86_64 x64 x86_64/sdk x86_64-linux-gnu
         PATHS
+        /usr/lib64
         /usr/lib
         /usr/local/cuda/lib
         /opt/cuda/lib
@@ -73,7 +74,7 @@ if("${CMAKE_SIZEOF_VOID_P}" EQUAL "8")
         )
 else( )
     find_library( OPENCL_LIBRARIES
-        NAMES OpenCL
+        NAMES libOpenCL.so.3 libOpenCL.so.2 libOpenCL.so.1
         HINTS
         ${OPENCL_ROOT}/lib
         $ENV{AMDAPPSDKROOT}/lib
@@ -85,7 +86,18 @@ else( )
         /usr/local/cuda/lib
         /opt/cuda/lib
         )
-endif( )
+endif()
+    
+if (OPENCL_LIBRARIES)
+  message( VERBOSE "Found Library" OPENCL_LIBRARIES)
+  check_library_exists(${OPENCL_LIBRARIES} clCreateCommandQueueWithProperties "" FOUND_QUEUE_WITH_PROPERTIES)
+  if (NOT FOUND_QUEUE_WITH_PROPERTIES)
+    message( FATAL_ERROR "libOpenCL does not include clCreateCommandQueueWithProperties(). Unable to proceed")
+    unset(OPENCL_LIBRARIES)
+    set(OPENCL_LIBRARIES-NOTFOUND "" CACHE INTERNAL "")
+  endif()
+endif()
+
 mark_as_advanced( OPENCL_LIBRARIES )
 
 include( FindPackageHandleStandardArgs )
